@@ -32,7 +32,7 @@ pub mod plugin {
         mut commands: Commands,
     ){
         commands.spawn(Camera2dBundle{
-            transform: Transform::from_scale(Vec3::splat(1.)),
+            transform: Transform::from_scale(Vec3::splat(0.1)),
             ..default()
         });
     }

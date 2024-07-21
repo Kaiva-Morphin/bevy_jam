@@ -1,4 +1,6 @@
 mod core;
+mod characters;
+use characters::plugin::{self, CharacterGeneratorViewerPlugin};
 use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
 use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
 
@@ -9,7 +11,8 @@ fn main() {
     app.add_plugins((
         core::default::plugin::DefaultPlugin,
         SwitchableEguiInspectorPlugin,
-        ScreenDiagnosticsPlugin
+        ScreenDiagnosticsPlugin,
+        CharacterGeneratorViewerPlugin,
     ));
     app.run();
 }
