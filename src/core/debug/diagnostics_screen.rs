@@ -1,3 +1,5 @@
+pub mod plugin {
+
 use bevy::{diagnostic::{DiagnosticPath, DiagnosticsStore}, prelude::*, utils::HashMap};
 
 pub struct ScreenDiagnosticsPlugin;
@@ -482,4 +484,6 @@ fn update(
     }
     
     diagnostics.update(&mut commands);
+}
+
 }

@@ -1,3 +1,5 @@
+pub mod plugin{
+
 use bevy::{app::{App, Plugin, Update}, input::ButtonInput, prelude::{KeyCode, Res, ResMut, Resource}};
 
 #[derive(Resource, Default)]
@@ -25,4 +27,6 @@ fn toggle_inspector(
     if keyboard.just_pressed(KeyCode::F1){
         cond.0 = !cond.0;
     }
+}
+
 }
