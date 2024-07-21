@@ -7,8 +7,8 @@ use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
 use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
 
 use bevy::prelude::*;
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
+
 use npc::NPCPlugin;
 use player::PlayerPlugin;
 use systems::*;
@@ -29,9 +29,4 @@ fn main() {
     ))
     .add_systems(Update, update_daycycle)
     .run();
-}
-
-
-fn update(){
-    
 }

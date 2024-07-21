@@ -4,7 +4,11 @@
 pub const DEFAULT_FONT_BYTES: &'static [u8; 202764] = include_bytes!("../../assets/fonts/Monocraft.ttf");
 
 pub mod plugin {
-    use bevy::{app::{Plugin, Startup}, prelude::{default, Camera2dBundle, Commands, Transform, Vec3, App, PluginGroup}, render::texture::ImagePlugin, window::{PresentMode, Window, WindowPlugin}, DefaultPlugins};
+    use bevy::{app::{Plugin, Startup}, math::vec2, prelude::{default, App, Camera2dBundle, Commands, PluginGroup, Transform, Vec3}, render::texture::ImagePlugin, window::{PresentMode, Window, WindowPlugin}, DefaultPlugins};
+    use bevy_rapier2d::render::RapierDebugRenderPlugin;
+    use bevy_rapier2d::prelude::*;
+
+    use crate::core::debug::rapier_debug::plugin::SwitchableRapierDebugPlugin;
 
     pub struct DefaultPlugin;
 
@@ -21,8 +25,23 @@ pub mod plugin {
                         }),
                             ..default()
                         }),
-                )
+                RapierDebugRenderPlugin::default().disabled(),
+                RapierPhysicsPlugin::<NoUserData>::default(),
+                SwitchableRapierDebugPlugin,
+                ),
             );
+            app.insert_resource(RapierConfiguration {
+                gravity: vec2(0.0, 0.0),
+                physics_pipeline_active: true,
+                query_pipeline_active: true,
+                timestep_mode: TimestepMode::Variable {
+                    max_dt: 1.0 / 60.0,
+                    time_scale: 1.0,
+                    substeps: 1,
+                },
+                scaled_shape_subdivision: 10,
+                force_update_from_transform_changes: false,
+            });
             app.add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin::default());
             app.add_systems(Startup, setup);
         }
@@ -36,6 +55,5 @@ pub mod plugin {
             ..default()
         });
     }
-
 }
 
