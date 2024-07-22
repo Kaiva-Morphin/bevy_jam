@@ -183,6 +183,7 @@ pub fn spawn_tile_collision(
                                     / 2.,
                                 0.,
                             ))
+                            .insert(Name::new("COLLIDER"))
                             .insert(GlobalTransform::default());
                     }
                 });
