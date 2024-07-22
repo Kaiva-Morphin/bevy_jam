@@ -2,7 +2,7 @@ pub mod plugin{
 
 use std::{cell::RefCell, default, sync::Mutex};
 
-use bevy::{core_pipeline::tonemapping::{DebandDither, Tonemapping}, prelude::*, render::camera::ScalingMode};
+use bevy::{core_pipeline::{bloom::BloomSettings, tonemapping::{DebandDither, Tonemapping}}, prelude::*, render::camera::ScalingMode};
 use bevy_inspector_egui::egui::mutex::RwLock;
 
 use crate::core::functions::ExpDecay;
@@ -69,6 +69,7 @@ fn setup_camera(
             ..default()
         },
         MainCamera,
+        BloomSettings::default(),
         CameraController{scale: 1., ..default()}
     ));
 }

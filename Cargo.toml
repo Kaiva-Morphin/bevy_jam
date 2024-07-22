@@ -35,7 +35,7 @@ serde = "1.0.203"
 bincode = "1.3.3"
 
 serde_json = "1.0.120"
-bevy_hanabi = {version = "0.12", default-features = false, features = [ "2d" ]}
+bevy_hanabi = {version = "0.12"} #, default-features = false, features = [ "2d" ]
 pathfinding = "4.10.0"
 
 [[bin]]
@@ -50,3 +50,12 @@ path = "src/main.rs"
 [[bin]]
 name = "controller"
 path = "src/player_controller.rs"
+
+[[bin]]
+name = "portal"
+path = "src/portal.rs"
+
+[[bin]]
+name = "pathfind"
+path = "src/pathfind.rs"
+
