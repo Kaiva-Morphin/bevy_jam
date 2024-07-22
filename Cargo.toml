@@ -16,13 +16,8 @@ codegen-units = 1
 incremental = false
 debug = false
 
-[features]
-dev = [
-    "bevy/dynamic_linking",
-]
-
 [dependencies]
-bevy = { version = "0.14", features = ["bevy_dynamic_plugin", "serialize", "multi_threaded"]} 
+bevy = { version = "0.14", features = ["bevy_dynamic_plugin", "serialize", "multi_threaded", "dynamic_linking"]} 
 
 bevy_ecs_ldtk = "0.10.0"
 

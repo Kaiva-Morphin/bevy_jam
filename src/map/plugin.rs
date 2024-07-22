@@ -53,8 +53,8 @@ pub struct EntitySpawnerBundle {
 
 #[derive(Resource, Default)]
 pub struct TrespassableCells{
-    cells: HashSet<IVec2>,
-    ready: bool
+    pub cells: HashSet<IVec2>,
+    pub ready: bool
 }
 
 fn trespassable_spawn_listener(
