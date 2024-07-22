@@ -17,6 +17,8 @@ use bevy::prelude::*;
 use map::plugin::TileMapPlugin;
 use pathfinding::num_traits::Signed;
 
+use bevy_hanabi::prelude::*;
+
 fn main() {
     let mut app = App::new();
     app
@@ -26,6 +28,7 @@ fn main() {
         ScreenDiagnosticsPlugin,
         TileMapPlugin
     ));
+    app.add_plugins(HanabiPlugin);
     app.add_systems(Startup, setup);
     app.add_systems(Update, update);
     app.run();
@@ -99,14 +102,15 @@ impl Default for SpeedCFG {
     }
 }
 
-
 fn update(
-    mut player_q: Query<(&mut KinematicCharacterController, &mut PlayerController, &mut CameraFollow), Without<PlayerAnimationState>>,
+    mut player_q: Query<(&mut KinematicCharacterController, &mut PlayerController, &mut CameraFollow, &Transform), Without<PlayerAnimationState>>,
     mut player_sprite_q: Query<(&mut TextureAtlas, &mut Transform, &mut PlayerAnimationState), Without<PlayerController>>,
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     mut speed_cfg: Local<SpeedCFG>,
     mut egui_context: EguiContexts,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>
 ){  
     let ctx = egui_context.ctx_mut();
 
@@ -116,7 +120,7 @@ fn update(
         ui.add(Slider::new(&mut speed_cfg.follow_speed, 1. ..= 10_000.).text("CAMERA FOLLOW SPEED"));
     });
 
-    let (mut p, mut controller, mut follow) = player_q.single_mut();
+    let (mut character_controller, mut controller, mut follow, player_transform) = player_q.single_mut();
 
     follow.speed = speed_cfg.follow_speed;
 
@@ -127,7 +131,7 @@ fn update(
 
     controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * speed_cfg.max_speed, time.delta_seconds() * speed_cfg.accumulation_grain);
     if controller.accumulated_velocity.length() > speed_cfg.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * speed_cfg.max_speed}
-    p.translation = Some(controller.accumulated_velocity * time.delta_seconds());
+    character_controller.translation = Some(controller.accumulated_velocity * time.delta_seconds());
 
     let (mut layout, mut transform, mut anim) = player_sprite_q.single_mut();
     
@@ -156,4 +160,106 @@ fn update(
     } else {
         layout.index = index + 1;
     }
+
+
+
+    let sprite_size = UVec2::new(48, 16);
+    let sprite_grid_size = UVec2::new(3,  1);
+
+    let texture_handle = asset_server.load("bat.png");
+
+    // The sprites form a grid, with a total animation frame count equal to the
+    // number of sprites.
+    let frame_count = sprite_grid_size.x * sprite_grid_size.y;
+
+    let mut gradient = Gradient::new();
+    gradient.add_key(0.0, Vec4::ONE);
+    gradient.add_key(0.5, Vec4::ONE);
+    gradient.add_key(1.0, Vec3::ONE.extend(0.));
+
+    let writer = ExprWriter::new();
+
+    let age = writer.rand(ScalarType::Float).expr();
+    let init_age = SetAttributeModifier::new(Attribute::AGE, age);
+
+    // All particles stay alive until their AGE is 5 seconds. Note that this doesn't
+    // mean they live for 5 seconds; if the AGE is initialized to a non-zero value
+    // at spawn, the total particle lifetime is (LIFETIME - AGE).
+    let lifetime = writer.lit(5.).expr();
+    let init_lifetime = SetAttributeModifier::new(Attribute::LIFETIME, lifetime);
+
+    let init_pos = SetPositionCircleModifier {
+        center: writer.lit(Vec3::Y * 0.1).expr(),
+        axis: writer.lit(Vec3::Z).expr(),
+        radius: writer.lit(0.4).expr(),
+        dimension: ShapeDimension::Surface,
+    };
+
+    let init_vel = SetVelocityCircleModifier {
+        center: writer.lit(Vec3::ZERO).expr(),
+        axis: writer.lit(Vec3::Y).expr(),
+        speed: (writer.lit(1.) + writer.lit(0.5) * writer.rand(ScalarType::Float)).expr(),
+    };
+
+    // Animate the SPRITE_INDEX attribute of each particle based on its age.
+    // We want to animate back and forth the index in [0:N-1] where N is the total
+    // number of sprites in the sprite sheet.
+    // - For the back and forth, we build a linear ramp z 1 -> 0 -> 1 with abs(x)
+    //   and y linear in [-1:1]
+    // - To get that linear cyclic y variable in [-1:1], we build a linear cyclic x
+    //   variable in [0:1]
+    // - To get that linear cyclic x variable in [0:1], we take the fractional part
+    //   of the age
+    // - Because we want to have one full cycle every couple of seconds, we need to
+    //   scale down the age value (0.02)
+    // - Finally the linear ramp z is scaled to the [0:N-1] range
+    // Putting it together we get:
+    //   sprite_index = i32(
+    //       abs(fract(particle.age * 0.02) * 2. - 1.) * frame_count
+    //     ) % frame_count;
+    let sprite_index = writer
+        .attr(Attribute::AGE)
+        .mul(writer.lit(0.1))
+        .fract()
+        .mul(writer.lit(2.))
+        .sub(writer.lit(1.))
+        .abs()
+        .mul(writer.lit(frame_count as f32))
+        .cast(ScalarType::Int)
+        .rem(writer.lit(frame_count as i32))
+        .expr();
+    let update_sprite_index = SetAttributeModifier::new(Attribute::SPRITE_INDEX, sprite_index);
+
+    let effect = asset_server.add(
+        EffectAsset::new(
+            vec![300],
+            Spawner::burst(32.0.into(), 8.0.into()),
+            writer.finish(),
+        )
+        .with_name("circle")
+        .init(init_pos)
+        .init(init_vel)
+        .init(init_age)
+        .init(init_lifetime)
+        .update(update_sprite_index)
+        .render(ParticleTextureModifier {
+            texture: texture_handle.clone(),
+            sample_mapping: ImageSampleMapping::Modulate,
+        })
+        .render(FlipbookModifier { sprite_grid_size })
+        .render(ColorOverLifetimeModifier { gradient })
+        .render(SizeOverLifetimeModifier {
+            gradient: Gradient::constant([0.5; 2].into()),
+            screen_space_size: false,
+        }),
+    );
+
+
+
+    if keyboard.just_pressed(KeyCode::ShiftLeft){
+        commands
+        .spawn(ParticleEffectBundle::new(effect))
+        .insert(Name::new("effect"));
+    }
+
 }
