@@ -22,6 +22,11 @@ pub struct TileObsticleBundle {
     obsticle: TileObsticle,
 }
 
+#[derive(Resource)]
+pub struct GridSize {
+    pub size: IVec2,
+}
+
 /// Spawns heron collisions for the walls of a level
 ///
 /// You could just insert a ColliderBundle in to the WallBundle,
@@ -45,6 +50,7 @@ pub fn spawn_tile_collision(
     level_query: Query<(Entity, &LevelIid)>,
     ldtk_projects: Query<&Handle<LdtkProject>>,
     ldtk_project_assets: Res<Assets<LdtkProject>>,
+    mut grid_size_res: ResMut<GridSize>,
 ) {
     /// Represents a wide wall that is 1 tile tall
     /// Used to spawn wall collisions
@@ -101,7 +107,7 @@ pub fn spawn_tile_collision(
                     grid_size,
                     ..
                 } = level.layer_instances()[0];
-
+                grid_size_res.size = IVec2::new(level.layer_instances()[0].c_wid, level.layer_instances()[0].c_hei);
                 // combine wall tiles into flat "plates" in each individual row
                 let mut plate_stack: Vec<Vec<Plate>> = Vec::new();
 

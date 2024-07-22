@@ -79,8 +79,8 @@ fn trespassable_spawn_listener(
 
 
 
-fn spawner_spawn_listener(
-    entity_q: Query<&GridCoords, Added<EntitySpawner>>,
+fn spawner_spawn_listener( // todo: rm
+    entity_q: Query<&GridCoords, With<EntitySpawner>>,
 ){
     for coords in entity_q.iter(){
         println!("Spawned enemy spawner {:?}", coords);

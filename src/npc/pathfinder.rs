@@ -1,7 +1,8 @@
 use bevy::{color::palettes::css::RED, math::ivec2, prelude::*, utils::HashSet};
+use bevy_ecs_ldtk::utils::translation_to_grid_coords;
 use pathfinding::prelude::{astar, bfs};
 use std::vec::IntoIter;
-use crate::{map::plugin::TrespassableCells, player::components::Player};
+use crate::{map::{plugin::TrespassableCells, tilemap::GridSize}, player::components::Player};
 
 use super::components::Hunter;
 
@@ -10,9 +11,9 @@ pub struct Pos(IVec2);
 
 const MOVES: [IVec2; 4] = [
     ivec2(1, 0),
-    ivec2(1, 1),
+    ivec2(0, 1),
     ivec2(-1, 0),
-    ivec2(-1, -1),
+    ivec2(0, -1),
 ];
 
 impl Pos {
@@ -36,14 +37,17 @@ pub fn process_pathfinding(
     mut hunters_transform: Query<&mut Transform, With<Hunter>>,
     trespassable: Res<TrespassableCells>,
     mut gizmos: Gizmos,
+    grid_size: Res<GridSize>,
 ) {
     if trespassable.ready {
-        println!("ready");
-        let player_ipos = (player_transform.single().translation.xy() / 16.).as_ivec2();
+        let player_ipos = translation_to_grid_coords(player_transform.single().translation.xy(), grid_size.size);
+        let player_ipos = ivec2(player_ipos.x, player_ipos.y);
         for hunter_transform in hunters_transform.iter_mut() {
-            let hunter_ipos = (hunter_transform.translation.xy() / 16.).as_ivec2();
+            let hunter_ipos = translation_to_grid_coords(hunter_transform.translation.xy(), grid_size.size);
+            let hunter_ipos = ivec2(hunter_ipos.x, hunter_ipos.y);
+            println!("{:?}", real2grid(player_transform.single().translation.xy(), grid_size.size));
             if let Some(path) = find_path(&Pos(hunter_ipos), &Pos(player_ipos), &trespassable) {
-                println!("{:?}", path);
+                // println!("{:?}", path);
                 for id in 0..path.len() - 1 {
                     let p0 = path[id].0.as_vec2();
                     let p1 = path[id + 1].0.as_vec2();
@@ -55,7 +59,7 @@ pub fn process_pathfinding(
     }
 }
 
-pub fn find_path(
+fn find_path(
     start: &Pos,
     end: &Pos,
     trespassable: &Res<TrespassableCells>,
@@ -66,7 +70,7 @@ pub fn find_path(
     |start| start.weight(end),
     |start| start == end)
     {
-        println!("did sth");
+        // println!("did sth");
         return Some(path.0)
     }
     None
