@@ -1,9 +1,9 @@
 use std::time::Duration;
 
-use bevy::{prelude::*, time::Stopwatch};
+use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-use crate::{player::components::Player, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG};
+use crate::{player::{components::Player, systems::PlayerController}, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG};
 
 use super::components::*;
 
@@ -26,7 +26,6 @@ pub fn spawn_civilian(
         },
         RigidBody::Dynamic,
         Collider::cuboid(10., 10.),
-        GravityScale(0.),
         Civilian,
         LockedAxes::ROTATION_LOCKED_Z,
         Velocity {
@@ -74,7 +73,6 @@ pub fn spawn_hunter(
         },
         RigidBody::Dynamic,
         Collider::cuboid(10., 10.),
-        GravityScale(0.),
         Hunter,
         LockedAxes::ROTATION_LOCKED_Z,
         Velocity {
@@ -97,12 +95,12 @@ pub fn manage_hunters(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>,
     mut hunters_data: Query<(&Transform, &mut Velocity, &mut HunterTimer), Without<Player>>,
-    player_data: Query<(&Transform, &Velocity), With<Player>>,
+    player_data: Query<(&Transform, &PlayerController), With<Player>>,
     time: Res<Time>,
 ) {
     let player_data = player_data.single();
     let player_pos = player_data.0.translation.xy();
-    let player_vel = player_data.1.linvel;
+    let player_vel = player_data.1.accumulated_velocity;
     let dt = time.delta_seconds();
     for (hunter_transform, mut hunter_velocity, mut hunter_timer) in hunters_data.iter_mut() {
         hunter_timer.timer.tick(Duration::from_secs_f32(dt));
@@ -130,7 +128,6 @@ pub fn manage_hunters(
                         Group::from_bits(BULLET_CG).unwrap(),
                         Group::from_bits(PLAYER_CG).unwrap()
                     ),
-                    GravityScale(0.),
                     LockedAxes::ROTATION_LOCKED_Z,
                     Velocity {
                         linvel: PROJ_V * dir,

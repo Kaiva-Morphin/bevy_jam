@@ -1,6 +1,7 @@
 mod core;
 mod player;
 mod npc;
+mod map;
 pub mod systems;
 
 use core::camera::plugin::EnhancedCameraPlugin;
@@ -9,6 +10,7 @@ use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
 
 use bevy::prelude::*;
 
+use map::plugin::TileMapPlugin;
 use npc::NPCPlugin;
 use player::PlayerPlugin;
 use systems::*;
@@ -19,6 +21,7 @@ fn main() {
         core::default::plugin::DefaultPlugin,
         SwitchableEguiInspectorPlugin,
         ScreenDiagnosticsPlugin,
+        TileMapPlugin
     ))
     .insert_resource(DayCycle {time: 0., is_day: true})
     .add_plugins((
