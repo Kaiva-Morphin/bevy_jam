@@ -15,7 +15,7 @@ pub fn pre_setup(
     commands.insert_resource(TransformToGrid{
         height: 0.,
         transform: vec2(0., 0.),
-        grid_size: vec2(16., 16.),
+        cell_size: vec2(16., 16.),
         ready: false
     });
 }
@@ -38,7 +38,7 @@ pub fn watcher (
         commands.insert_resource(TransformToGrid{
             height: level.px_hei as f32,
             transform: level_transform.translation().xy(),
-            grid_size: vec2(16., 16.),
+            cell_size: vec2(16., 16.),
             ready: true
         });
         return;
@@ -49,15 +49,18 @@ pub fn watcher (
 pub struct TransformToGrid{
     height: f32,
     transform: Vec2,
-    grid_size: Vec2,
-    ready: bool
+    cell_size: Vec2,
+    pub ready: bool
 }
 
 
 impl TransformToGrid{
     pub fn from_world(&self, position: Vec2) -> Vec2{
-        ((vec2(0., self.height) + self.transform) - position) / self.grid_size * vec2(-1., 1.)
-    }    
+        ((vec2(0., self.height) + self.transform) - position) / self.cell_size * vec2(-1., 1.)
+    }
+    pub fn to_world(&self, position: IVec2) -> Vec2{
+        (vec2(0., self.height) + self.transform) - position.as_vec2() * self.cell_size * vec2(-1., 1.) - self.cell_size / 2.
+    } 
 }
 
 
@@ -67,11 +70,6 @@ pub struct TileObsticle;
 #[derive(Clone, Debug, Default, Bundle, LdtkIntCell)]
 pub struct TileObsticleBundle {
     obsticle: TileObsticle,
-}
-
-#[derive(Resource)]
-pub struct GridSize {
-    pub size: IVec2,
 }
 
 /// Spawns heron collisions for the walls of a level
@@ -97,7 +95,6 @@ pub fn spawn_tile_collision(
     level_query: Query<(Entity, &LevelIid)>,
     ldtk_projects: Query<&Handle<LdtkProject>>,
     ldtk_project_assets: Res<Assets<LdtkProject>>,
-    mut grid_size_res: ResMut<GridSize>,
 ) {
     /// Represents a wide wall that is 1 tile tall
     /// Used to spawn wall collisions
@@ -154,7 +151,6 @@ pub fn spawn_tile_collision(
                     grid_size,
                     ..
                 } = level.layer_instances()[0];
-                grid_size_res.size = IVec2::new(level.layer_instances()[0].c_wid, level.layer_instances()[0].c_hei);
                 // combine wall tiles into flat "plates" in each individual row
                 let mut plate_stack: Vec<Vec<Plate>> = Vec::new();
 

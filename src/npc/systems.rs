@@ -66,23 +66,18 @@ pub fn spawn_hunter(
     asset_server: ResMut<AssetServer>,
 ) {
     commands.spawn((
+        Name::new("Hunter"),
         SpriteBundle {
             texture: asset_server.load("sprites/4el.png"),
             transform: Transform::from_xyz(-40., -40., 0.),
             ..default()
         },
-        RigidBody::Dynamic,
-        Collider::cuboid(10., 10.),
+        RigidBody::KinematicPositionBased,
+        Collider::cuboid(8., 8.),
         Hunter,
-        LockedAxes::ROTATION_LOCKED_Z,
-        Velocity {
-            linvel: Vec2::ZERO,
-            angvel: 0.0,
-        },
-        Damping {
-            linear_damping: 1.2,
-            angular_damping: 0.0,
-        },
+        NpcVelAccum {v: Vec2::ZERO},
+        NpcPath {path: vec![]},
+        KinematicCharacterController::default(),
         SolverGroups::new(
             Group::from_bits(NPC_CG).unwrap(),
             Group::from_bits(PLAYER_CG & STRUCTURES_CG).unwrap()
@@ -94,7 +89,8 @@ pub fn spawn_hunter(
 pub fn manage_hunters(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>,
-    mut hunters_data: Query<(&Transform, &mut Velocity, &mut HunterTimer), Without<Player>>,
+    mut hunters_data: Query<(&Transform, &mut KinematicCharacterController,
+        &mut NpcVelAccum, &mut NpcPath, &mut HunterTimer), Without<Player>>,
     player_data: Query<(&Transform, &PlayerController), With<Player>>,
     time: Res<Time>,
 ) {
@@ -102,8 +98,15 @@ pub fn manage_hunters(
     let player_pos = player_data.0.translation.xy();
     let player_vel = player_data.1.accumulated_velocity;
     let dt = time.delta_seconds();
-    for (hunter_transform, mut hunter_velocity, mut hunter_timer) in hunters_data.iter_mut() {
+    for (hunter_transform, mut hunter_controller,
+        mut vel_accum , mut hunter_path, mut hunter_timer) in hunters_data.iter_mut() {
         hunter_timer.timer.tick(Duration::from_secs_f32(dt));
+        let move_dir = hunter_path.goal - hunter_transform.translation.xy();
+        vel_accum.v = vel_accum.v.move_towards(
+            move_dir.normalize_or_zero() * 50., time.delta_seconds() * 450.);
+        // if controller.accumulated_velocity.length() > speed_cfg.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * speed_cfg.max_speed}
+        // character_controller.translation = Some(controller.accumulated_velocity * time.delta_seconds());
+
         let hunter_pos = hunter_transform.translation.xy();
         let direction = player_pos - hunter_pos;
         let length = direction.length();
@@ -187,4 +190,3 @@ pub fn process_proj_collisions(
         }
     }
 }
-

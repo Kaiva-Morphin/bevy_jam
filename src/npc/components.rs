@@ -18,3 +18,13 @@ pub struct DespawnTimer {
 pub struct HunterTimer {
     pub timer: Timer
 }
+
+#[derive(Component)]
+pub struct NpcVelAccum {
+    pub v: Vec2,
+}
+
+#[derive(Component)]
+pub struct NpcPath {
+    pub goal: Vec2,
+}

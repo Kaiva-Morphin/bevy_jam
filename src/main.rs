@@ -11,7 +11,6 @@ use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
 use bevy::prelude::*;
 
 use map::plugin::TileMapPlugin;
-use map::tilemap::GridSize;
 use npc::NPCPlugin;
 use player::PlayerPlugin;
 use systems::*;
@@ -25,7 +24,6 @@ fn main() {
         TileMapPlugin
     ))
     .insert_resource(DayCycle {time: 0., is_day: true})
-    .insert_resource(GridSize {size: IVec2::ZERO})
     .add_plugins((
         PlayerPlugin,
         NPCPlugin,
