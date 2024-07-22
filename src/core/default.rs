@@ -1,15 +1,12 @@
 
 
 
-pub const DEFAULT_FONT_BYTES: &'static [u8; 202764] = include_bytes!("../../assets/fonts/Monocraft.ttf");
-
 pub mod plugin {
-    use bevy::{app::{Plugin, Startup}, math::vec2, prelude::{default, App, Camera2dBundle, Commands, PluginGroup, Transform, Vec3}, render::texture::ImagePlugin, window::{PresentMode, Window, WindowPlugin}, DefaultPlugins};
+    use bevy::{app::{Plugin, Startup, Update}, color::{Color, Srgba}, core_pipeline::tonemapping::{DebandDither, Tonemapping}, math::vec2, prelude::{default, App, Camera2d, Camera2dBundle, Commands, Gizmos, PluginGroup, Transform, Vec3}, render::{camera::{Camera, OrthographicProjection, ScalingMode}, texture::ImagePlugin, view::Msaa}, window::{PresentMode, Window, WindowPlugin, WindowTheme}, DefaultPlugins};
     use bevy_rapier2d::render::RapierDebugRenderPlugin;
     use bevy_rapier2d::prelude::*;
 
-    use crate::core::debug::rapier_debug::plugin::SwitchableRapierDebugPlugin;
-
+    use crate::core::{camera::plugin::EnhancedCameraPlugin, debug::rapier_debug::plugin::SwitchableRapierDebugPlugin};
     pub struct DefaultPlugin;
 
     impl Plugin for DefaultPlugin {
@@ -19,17 +16,20 @@ pub mod plugin {
                 .set(ImagePlugin::default_nearest())
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        present_mode: PresentMode::AutoNoVsync,
-                        title: "Simple Game!".into(),
-                            ..default()
-                        }),
+                                present_mode: PresentMode::AutoNoVsync,
+                                window_theme: Some(WindowTheme::Dark),
+                                title: "Bloody Night".into(),
+                                ..default()
+                            }),
                             ..default()
                         }),
                 RapierDebugRenderPlugin::default().disabled(),
                 RapierPhysicsPlugin::<NoUserData>::default(),
                 SwitchableRapierDebugPlugin,
-                ),
+                EnhancedCameraPlugin
+            ),
             );
+            app.insert_resource(Msaa::Off);
             app.insert_resource(RapierConfiguration {
                 gravity: vec2(0.0, 0.0),
                 physics_pipeline_active: true,
@@ -43,17 +43,7 @@ pub mod plugin {
                 force_update_from_transform_changes: false,
             });
             app.add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin::default());
-            app.add_systems(Startup, setup);
         }
-    }
-
-    fn setup(
-        mut commands: Commands,
-    ){
-        commands.spawn(Camera2dBundle{
-            transform: Transform::from_scale(Vec3::splat(0.5)),
-            ..default()
-        });
     }
 }
 

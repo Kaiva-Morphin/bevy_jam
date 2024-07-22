@@ -3,11 +3,11 @@ mod player;
 mod npc;
 pub mod systems;
 
+use core::camera::plugin::EnhancedCameraPlugin;
 use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
 use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
 
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
 
 use npc::NPCPlugin;
 use player::PlayerPlugin;
@@ -19,8 +19,6 @@ fn main() {
         core::default::plugin::DefaultPlugin,
         SwitchableEguiInspectorPlugin,
         ScreenDiagnosticsPlugin,
-        RapierDebugRenderPlugin::default(),
-        RapierPhysicsPlugin::<NoUserData>::default(),
     ))
     .insert_resource(DayCycle {time: 0., is_day: true})
     .add_plugins((

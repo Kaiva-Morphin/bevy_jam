@@ -46,3 +46,12 @@ pathfinding = "4.10.0"
 [[bin]]
 name = "map"
 path = "src/map_pathfind.rs"
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
+
+
+[[bin]]
+name = "controller"
+path = "src/player_controller.rs"
