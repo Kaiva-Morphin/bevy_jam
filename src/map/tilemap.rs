@@ -2,15 +2,6 @@ use bevy::{prelude::*, utils::{HashMap, HashSet}};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::{dynamics::RigidBody, geometry::{Collider, Friction}};
 
-
-
-
-
-
-
-
-
-
 pub fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>
@@ -18,6 +9,7 @@ pub fn setup(
     let ldtk_handle = asset_server.load("testmap.ldtk");
     commands.spawn(LdtkWorldBundle {
         ldtk_handle,
+        transform: Transform::from_translation(Vec3::Z * -10.),
         ..Default::default()
     });
 }

@@ -27,3 +27,10 @@ impl CharacterLayout {
         self.body_variant * 3 + 1
     }
 }
+
+
+
+
+
+
+
