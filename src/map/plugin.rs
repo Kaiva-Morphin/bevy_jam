@@ -18,7 +18,8 @@ impl Plugin for TileMapPlugin {
             set_clear_color: SetClearColor::FromLevelBackground,
             ..Default::default()
         })
-        .add_systems(Startup, tilemap::setup)
+        .add_systems(PreStartup, tilemap::pre_setup)
+        .add_systems(Update, tilemap::watcher)
         .add_systems(Update, (tilemap::spawn_tile_collision, spawner_spawn_listener, trespassable_spawn_listener))
         .register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner")
         .register_ldtk_int_cell::<tilemap::TileObsticleBundle>(1)
@@ -65,7 +66,6 @@ fn trespassable_spawn_listener(
     //ldtk_projects: Query<&Handle<LdtkProject>>,
     //ldtk_project_assets: Res<Assets<LdtkProject>>,
 ){
-
     if !entity_q.is_empty(){
         for coords in entity_q.iter(){
             cells.cells.insert(ivec2(coords.x, coords.y));
@@ -73,9 +73,8 @@ fn trespassable_spawn_listener(
         println!("ADDED! {} cells", cells.cells.len());
         cells.ready = true;
     }
-    
-    
 }
+
 
 
 

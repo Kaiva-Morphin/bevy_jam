@@ -1,8 +1,8 @@
-use bevy::{prelude::*, utils::{HashMap, HashSet}};
+use bevy::{math::vec2, prelude::*, utils::{HashMap, HashSet}};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::{dynamics::RigidBody, geometry::{Collider, Friction}};
 
-pub fn setup(
+pub fn pre_setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ){
@@ -12,7 +12,54 @@ pub fn setup(
         transform: Transform::from_translation(Vec3::Z * -10.),
         ..Default::default()
     });
+    commands.insert_resource(TransformToGrid{
+        height: 0.,
+        transform: vec2(0., 0.),
+        grid_size: vec2(16., 16.),
+        ready: false
+    });
 }
+
+pub fn watcher (
+    mut commands: Commands,
+    res: Res<TransformToGrid>,
+    ldtk_projects: Query<&Handle<LdtkProject>>,
+    ldtk_project_assets: Res<Assets<LdtkProject>>,
+    levels: Query<(&LevelIid, &GlobalTransform)>,
+){
+    if res.ready {return;}
+    for (level_iid, level_transform) in levels.iter() {
+        let ldtk_project = ldtk_project_assets
+            .get(ldtk_projects.single())
+            .expect("ldtk project should be loaded before player is spawned");
+        let level = ldtk_project
+            .get_raw_level_by_iid(level_iid.get())
+            .expect("level should exist in only project");
+        commands.insert_resource(TransformToGrid{
+            height: level.px_hei as f32,
+            transform: level_transform.translation().xy(),
+            grid_size: vec2(16., 16.),
+            ready: true
+        });
+        return;
+    }
+}
+
+#[derive(Resource)]
+pub struct TransformToGrid{
+    height: f32,
+    transform: Vec2,
+    grid_size: Vec2,
+    ready: bool
+}
+
+
+impl TransformToGrid{
+    pub fn from_world(&self, position: Vec2) -> Vec2{
+        ((vec2(0., self.height) + self.transform) - position) / self.grid_size * vec2(-1., 1.)
+    }    
+}
+
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default, Component)]
 pub struct TileObsticle;

@@ -7,17 +7,22 @@ use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
 use core::debug::diagnostics_screen::plugin::{ScreenDiagnostics, ScreenDiagnosticsPlugin};
 use core::default;
 
+use bevy::color::palettes::css::RED;
 use bevy::input::keyboard::KeyboardInput;
-use bevy::math::{uvec2, vec2};
+use bevy::math::{ivec2, uvec2, vec2};
+use bevy_ecs_ldtk::assets::{LdtkProject, LevelMetadata, LevelMetadataAccessor};
+use bevy_ecs_ldtk::{LevelIid, LevelSelection};
 use bevy_inspector_egui::bevy_egui::EguiContexts;
 use bevy_inspector_egui::egui::{self, Slider};
 use bevy_rapier2d::control::KinematicCharacterController;
 use bevy_rapier2d::prelude::*;
 use bevy::prelude::*;
 use map::plugin::TileMapPlugin;
+use map::tilemap::TransformToGrid;
 use pathfinding::num_traits::Signed;
 
 use bevy_hanabi::prelude::*;
+use pathfinding::prelude::astar;
 
 fn main() {
     let mut app = App::new();
@@ -58,6 +63,9 @@ struct PlayerAnimationState{
     pub dir: Direction
 }
 
+#[derive(Component)]
+struct BatEffect;
+
 fn setup(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>
@@ -82,6 +90,104 @@ fn setup(
         },
         PlayerAnimationState::default()
     ));});
+
+
+    let sprite_size = UVec2::new(48, 16);
+    let sprite_grid_size = UVec2::new(3,  1);
+
+    let texture_handle = asset_server.load("bat.png");
+
+    // The sprites form a grid, with a total animation frame count equal to the
+    // number of sprites.
+    let frame_count = sprite_grid_size.x * sprite_grid_size.y;
+
+    let mut gradient = Gradient::new();
+    gradient.add_key(0.0, Vec4::ONE);
+    gradient.add_key(0.5, Vec4::ONE);
+    gradient.add_key(1.0, Vec3::ONE.extend(0.));
+
+    let writer = ExprWriter::new();
+
+    let age = writer.rand(ScalarType::Float).expr();
+    let init_age = SetAttributeModifier::new(Attribute::AGE, age);
+
+    // All particles stay alive until their AGE is 5 seconds. Note that this doesn't
+    // mean they live for 5 seconds; if the AGE is initialized to a non-zero value
+    // at spawn, the total particle lifetime is (LIFETIME - AGE).
+    let lifetime = writer.lit(5.).expr();
+    let init_lifetime = SetAttributeModifier::new(Attribute::LIFETIME, lifetime);
+
+    let init_pos = SetPositionCircleModifier {
+        center: writer.lit(Vec3::Y * 0.1).expr(),
+        axis: writer.lit(Vec3::Z).expr(),
+        radius: writer.lit(0.4).expr(),
+        dimension: ShapeDimension::Surface,
+    };
+
+    let init_vel = SetVelocityCircleModifier {
+        center: writer.lit(Vec3::ZERO).expr(),
+        axis: writer.lit(Vec3::Z).expr(),
+        speed: (writer.lit(1.) + writer.lit(0.5) * writer.rand(ScalarType::Float)).expr(),
+    };
+
+    // Animate the SPRITE_INDEX attribute of each particle based on its age.
+    // We want to animate back and forth the index in [0:N-1] where N is the total
+    // number of sprites in the sprite sheet.
+    // - For the back and forth, we build a linear ramp z 1 -> 0 -> 1 with abs(x)
+    //   and y linear in [-1:1]
+    // - To get that linear cyclic y variable in [-1:1], we build a linear cyclic x
+    //   variable in [0:1]
+    // - To get that linear cyclic x variable in [0:1], we take the fractional part
+    //   of the age
+    // - Because we want to have one full cycle every couple of seconds, we need to
+    //   scale down the age value (0.02)
+    // - Finally the linear ramp z is scaled to the [0:N-1] range
+    // Putting it together we get:
+    //   sprite_index = i32(
+    //       abs(fract(particle.age * 0.02) * 2. - 1.) * frame_count
+    //     ) % frame_count;
+    let sprite_index = writer
+        .attr(Attribute::AGE)
+        .mul(writer.lit(0.1))
+        .fract()
+        .mul(writer.lit(2.))
+        .sub(writer.lit(1.))
+        .abs()
+        .mul(writer.lit(frame_count as f32))
+        .cast(ScalarType::Int)
+        .rem(writer.lit(frame_count as i32))
+        .expr();
+    let update_sprite_index = SetAttributeModifier::new(Attribute::SPRITE_INDEX, sprite_index);
+    let effect = asset_server.add(
+        EffectAsset::new(
+            vec![300],
+            Spawner::burst(32.0.into(), 8.0.into()),
+            writer.finish(),
+        )
+        .with_name("circle")
+        .init(init_pos)
+        .init(init_vel)
+        .init(init_age)
+        .init(init_lifetime)
+        .update(update_sprite_index)
+        .render(ParticleTextureModifier {
+            texture: texture_handle.clone(),
+            sample_mapping: ImageSampleMapping::Modulate,
+        })
+        .render(FlipbookModifier { sprite_grid_size })
+        .render(ColorOverLifetimeModifier { gradient })
+        .render(SizeOverLifetimeModifier {
+            gradient: Gradient::constant([10.; 2].into()),
+            screen_space_size: false,
+        }),
+    );
+
+
+
+    commands
+        .spawn(ParticleEffectBundle::new(effect))
+        .insert(Name::new("effect"))
+        .insert(BatEffect);
 }
 
 
@@ -110,10 +216,17 @@ fn update(
     mut speed_cfg: Local<SpeedCFG>,
     mut egui_context: EguiContexts,
     mut commands: Commands,
-    asset_server: Res<AssetServer>
+    asset_server: Res<AssetServer>,
+    mut gizmos: Gizmos,
+    ldtk_projects: Query<&Handle<LdtkProject>>,
+    ldtk_project_assets: Res<Assets<LdtkProject>>,
+    levels: Query<(&LevelIid, &GlobalTransform)>,
+    transformer: Res<TransformToGrid>
 ){  
+    
+    //
     let ctx = egui_context.ctx_mut();
-
+    gizmos.line_2d(Vec2::ZERO, Vec2::ONE * 5., Color::Srgba(RED));
     egui::Window::new("SLIDERS").show(ctx, |ui|{
         ui.add(Slider::new(&mut speed_cfg.max_speed, 1. ..= 10_000.).text("MAX SPEED"));
         ui.add(Slider::new(&mut speed_cfg.accumulation_grain, 1. ..= 10_000.).text("ACCUMULATION GRAIN"));
@@ -121,6 +234,20 @@ fn update(
     });
 
     let (mut character_controller, mut controller, mut follow, player_transform) = player_q.single_mut();
+    
+    for (level_iid, level_transform) in levels.iter() {
+        let ldtk_project = ldtk_project_assets
+            .get(ldtk_projects.single())
+            .expect("ldtk project should be loaded before player is spawned");
+        let level = ldtk_project
+            .get_raw_level_by_iid(level_iid.get())
+            .expect("level should exist in only project");
+
+        let level_size = ivec2(level.px_wid, level.px_hei);
+
+        let grid_pos = ((vec2(0., level_size.y as f32) + level_transform.translation().xy()) - player_transform.translation.xy()).as_ivec2() / ivec2(16, 16);
+        println!("{}", transformer.from_world(player_transform.translation.xy()) );
+    }
 
     follow.speed = speed_cfg.follow_speed;
 
@@ -163,103 +290,6 @@ fn update(
 
 
 
-    let sprite_size = UVec2::new(48, 16);
-    let sprite_grid_size = UVec2::new(3,  1);
-
-    let texture_handle = asset_server.load("bat.png");
-
-    // The sprites form a grid, with a total animation frame count equal to the
-    // number of sprites.
-    let frame_count = sprite_grid_size.x * sprite_grid_size.y;
-
-    let mut gradient = Gradient::new();
-    gradient.add_key(0.0, Vec4::ONE);
-    gradient.add_key(0.5, Vec4::ONE);
-    gradient.add_key(1.0, Vec3::ONE.extend(0.));
-
-    let writer = ExprWriter::new();
-
-    let age = writer.rand(ScalarType::Float).expr();
-    let init_age = SetAttributeModifier::new(Attribute::AGE, age);
-
-    // All particles stay alive until their AGE is 5 seconds. Note that this doesn't
-    // mean they live for 5 seconds; if the AGE is initialized to a non-zero value
-    // at spawn, the total particle lifetime is (LIFETIME - AGE).
-    let lifetime = writer.lit(5.).expr();
-    let init_lifetime = SetAttributeModifier::new(Attribute::LIFETIME, lifetime);
-
-    let init_pos = SetPositionCircleModifier {
-        center: writer.lit(Vec3::Y * 0.1).expr(),
-        axis: writer.lit(Vec3::Z).expr(),
-        radius: writer.lit(0.4).expr(),
-        dimension: ShapeDimension::Surface,
-    };
-
-    let init_vel = SetVelocityCircleModifier {
-        center: writer.lit(Vec3::ZERO).expr(),
-        axis: writer.lit(Vec3::Y).expr(),
-        speed: (writer.lit(1.) + writer.lit(0.5) * writer.rand(ScalarType::Float)).expr(),
-    };
-
-    // Animate the SPRITE_INDEX attribute of each particle based on its age.
-    // We want to animate back and forth the index in [0:N-1] where N is the total
-    // number of sprites in the sprite sheet.
-    // - For the back and forth, we build a linear ramp z 1 -> 0 -> 1 with abs(x)
-    //   and y linear in [-1:1]
-    // - To get that linear cyclic y variable in [-1:1], we build a linear cyclic x
-    //   variable in [0:1]
-    // - To get that linear cyclic x variable in [0:1], we take the fractional part
-    //   of the age
-    // - Because we want to have one full cycle every couple of seconds, we need to
-    //   scale down the age value (0.02)
-    // - Finally the linear ramp z is scaled to the [0:N-1] range
-    // Putting it together we get:
-    //   sprite_index = i32(
-    //       abs(fract(particle.age * 0.02) * 2. - 1.) * frame_count
-    //     ) % frame_count;
-    let sprite_index = writer
-        .attr(Attribute::AGE)
-        .mul(writer.lit(0.1))
-        .fract()
-        .mul(writer.lit(2.))
-        .sub(writer.lit(1.))
-        .abs()
-        .mul(writer.lit(frame_count as f32))
-        .cast(ScalarType::Int)
-        .rem(writer.lit(frame_count as i32))
-        .expr();
-    let update_sprite_index = SetAttributeModifier::new(Attribute::SPRITE_INDEX, sprite_index);
-
-    let effect = asset_server.add(
-        EffectAsset::new(
-            vec![300],
-            Spawner::burst(32.0.into(), 8.0.into()),
-            writer.finish(),
-        )
-        .with_name("circle")
-        .init(init_pos)
-        .init(init_vel)
-        .init(init_age)
-        .init(init_lifetime)
-        .update(update_sprite_index)
-        .render(ParticleTextureModifier {
-            texture: texture_handle.clone(),
-            sample_mapping: ImageSampleMapping::Modulate,
-        })
-        .render(FlipbookModifier { sprite_grid_size })
-        .render(ColorOverLifetimeModifier { gradient })
-        .render(SizeOverLifetimeModifier {
-            gradient: Gradient::constant([0.5; 2].into()),
-            screen_space_size: false,
-        }),
-    );
-
-
-
-    if keyboard.just_pressed(KeyCode::ShiftLeft){
-        commands
-        .spawn(ParticleEffectBundle::new(effect))
-        .insert(Name::new("effect"));
-    }
+    
 
 }
