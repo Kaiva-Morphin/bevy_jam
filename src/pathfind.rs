@@ -68,7 +68,7 @@ fn main() {
 
             moves
         },
-        |p| p.distance(&GOAL), //  / 3
+        |p| p.distance(&GOAL), //  / 3 (a - b).length() * 10 as u32
         |p| *p == GOAL
 
     );
