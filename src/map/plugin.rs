@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::{math::ivec2, prelude::*, utils::HashSet};
 use bevy_ecs_ldtk::prelude::*;
 
@@ -20,8 +22,9 @@ impl Plugin for TileMapPlugin {
         })
         .add_systems(PreStartup, tilemap::pre_setup)
         .add_systems(Update, tilemap::watcher)
-        .add_systems(Update, (tilemap::spawn_tile_collision, spawner_spawn_listener))
+        .add_systems(Update, tilemap::spawn_tile_collision)
         .add_systems(PostUpdate, trespassable_spawn_listener)
+        .add_systems(PreUpdate, sizif)
         .register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner")
         .register_ldtk_int_cell::<tilemap::TileObsticleBundle>(1)
         .register_ldtk_int_cell::<TrespassableCellBundle>(2);
@@ -45,8 +48,10 @@ pub struct TrespassableCellBundle{
 }
 
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Default, Component)]
-pub struct EntitySpawner;
+#[derive(Clone, Eq, PartialEq, Debug, Default, Component)]
+pub struct EntitySpawner {
+    pub timer: Timer,
+}
 
 #[derive(Clone, Debug, Default, Bundle, LdtkEntity)]
 pub struct EntitySpawnerBundle {
@@ -77,13 +82,11 @@ fn trespassable_spawn_listener(
     }
 }
 
-
-
-fn spawner_spawn_listener( // todo: rm
-    entity_q: Query<&GridCoords, With<EntitySpawner>>,
-){
-    for coords in entity_q.iter(){
-        println!("Spawned enemy spawner {:?}", coords);
+fn sizif(
+    mut commands: Commands,
+    q: Query<Entity, Added<EntitySpawner>>,
+    ){
+    for e in q.iter(){
+    commands.entity(e).insert(EntitySpawner{ timer: Timer::new(Duration::from_secs_f32(1.), TimerMode::Repeating)});
     }
-}
-
+    }

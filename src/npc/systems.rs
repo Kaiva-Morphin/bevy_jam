@@ -1,9 +1,14 @@
 use std::time::Duration;
 
 use bevy::{color::palettes::css::RED, math::uvec2, prelude::*};
+use bevy_ecs_ldtk::GridCoords;
 use bevy_rapier2d::prelude::*;
 
-use crate::{characters::animation::*, map::{plugin::TrespassableCells, tilemap::TransformToGrid}, player::{components::Player, systems::PlayerController}, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG};
+use crate::{
+    characters::animation::*,
+    map::{plugin::{EntitySpawner, TrespassableCells}, tilemap::TransformToGrid},
+    player::{components::Player, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}},
+};
 
 use super::{components::*, pathfinder};
 
@@ -16,19 +21,20 @@ const HUNTER_MAXSPEED: f32 = 50.0;
 const HUNTER_ACCEL: f32 = 450.0;
 
 pub fn spawn_civilian(
-    mut commands: Commands,
-    asset_server: ResMut<AssetServer>,
+    commands: &mut Commands,
+    asset_server: &mut ResMut<AssetServer>,
+    pos: Vec2,
 ) {
     commands.spawn((
         SpriteBundle {
             texture: asset_server.load("sprites/box.png"),
-            transform: Transform::from_xyz(40., 40., 0.),
+            transform: Transform::from_xyz(pos.x, pos.y, 0.),
             ..default()
         },
         Civilian,
         CollisionGroups::new(
             Group::from_bits(NPC_CG).unwrap(),
-            Group::from_bits(PLAYER_CG & STRUCTURES_CG).unwrap()
+            Group::from_bits(PLAYER_CG | STRUCTURES_CG).unwrap()
         ),
         RigidBody::KinematicPositionBased,
         Collider::ball(5.),
@@ -120,13 +126,14 @@ pub fn manage_civilians(
 }
 
 pub fn spawn_hunter(
-    mut commands: Commands,
-    asset_server: ResMut<AssetServer>,
+    commands: &mut Commands,
+    asset_server: &mut ResMut<AssetServer>,
+    pos: Vec2,
 ) {
     commands.spawn((
         Name::new("Hunter"),
         RigidBody::KinematicPositionBased,
-        TransformBundle::default(),
+        TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
         VisibilityBundle::default(),
         Collider::ball(5.),
         Hunter,
@@ -135,7 +142,7 @@ pub fn spawn_hunter(
         KinematicCharacterController::default(),
         CollisionGroups::new(
             Group::from_bits(NPC_CG).unwrap(),
-            Group::from_bits(PLAYER_CG & STRUCTURES_CG).unwrap()
+            Group::from_bits(PLAYER_CG | STRUCTURES_CG).unwrap()
         ),
         HunterTimer { timer: Timer::new(Duration::from_secs_f32(HUNTER_TIMER), TimerMode::Repeating) },
         NpcState::Chase,
@@ -204,7 +211,7 @@ pub fn manage_hunters(
                             ..default()
                         },
                         RigidBody::Dynamic,
-                        Collider::cuboid(10., 10.),
+                        Collider::cuboid(3., 3.),
                         CollisionGroups::new(
                             Group::from_bits(BULLET_CG).unwrap(),
                             Group::from_bits(PLAYER_CG).unwrap()
@@ -216,6 +223,7 @@ pub fn manage_hunters(
                         },
                         DespawnTimer { timer: Timer::new(Duration::from_secs(6), TimerMode::Once) },
                         Projectile,
+                        // Sensor,
                         ActiveEvents::COLLISION_EVENTS,
                         Sleeping::disabled(),
                     ));
@@ -324,24 +332,54 @@ pub fn manage_projectiles(
 pub fn process_proj_collisions(
     mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
+    mut contact_force_events: EventReader<ContactForceEvent>,
     mut player: Query<(Entity, &mut Player)>,
     projectiles: Query<&Projectile>,
 ) {
     let (player_entity, player) = player.single_mut();
+    for contact_force_event in contact_force_events.read() {
+        println!("Received contact force event: {:?}", contact_force_event);
+    }
     for collision_event in collision_events.read() {
+        println!("{:?}", collision_event);
         if let CollisionEvent::Started(reciever_entity, sender_entity, _) = collision_event {
-            println!("{:?} {:?}", reciever_entity, sender_entity);
+            // println!("{:?} {:?}", reciever_entity, sender_entity);
             if let Ok(_) = projectiles.get(*sender_entity) { // todo: rm if process only proj
                 if *reciever_entity == player_entity {
-                    println!("hit");
+                    println!("PLAYER RECIEVED")
                 }
                 commands.entity(*sender_entity).despawn();
-            } else if let Ok(_) = projectiles.get(*reciever_entity) { // todo: rm if process only proj
-                if *sender_entity == player_entity {
-                    println!("hit");
-                }
-                commands.entity(*reciever_entity).despawn();
+            } else { // todo: rm if process only proj
+                println!("PLAYER SENDED");
+                // commands.entity(*reciever_entity).despawn();
             }
         }
     }
+}
+
+pub fn entity_spawner(
+    mut commands: Commands,
+    mut asset_server: ResMut<AssetServer>,
+    mut spawners: Query<(&mut EntitySpawner, &GlobalTransform)>,
+    mut npcs_on_map: ResMut<NpcsOnMap>,
+    time: Res<Time>,
+) {
+    let dt = time.delta_seconds();
+    for (mut spawner, spawner_gpos) in spawners.iter_mut() {
+        spawner.timer.tick(Duration::from_secs_f32(dt));
+        if spawner.timer.finished() {
+            let spawner_pos = spawner_gpos.translation().xy();
+            // if npcs_on_map.civilians < 5 {
+            //     spawn_civilian(&mut commands, &mut asset_server, spawner_pos);
+            //     npcs_on_map.civilians += 1;
+            // }
+            if npcs_on_map.hunters < 1 {
+                spawn_hunter(&mut commands, &mut asset_server, spawner_pos);
+                npcs_on_map.hunters += 1;
+            }
+        }
+    }
+    // if let Ok(t) = spawner.get_single() {
+    //     println!("{:?}", transformer.from_world_i32(t.translation().xy()))
+    // }
 }

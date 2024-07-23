@@ -37,3 +37,9 @@ pub enum NpcState {
     Chill,
     Dead,
 }
+
+#[derive(Resource, Default)]
+pub struct NpcsOnMap {
+    pub hunters: u32,
+    pub civilians: u32,
+}
