@@ -26,5 +26,14 @@ pub struct NpcVelAccum {
 
 #[derive(Component)]
 pub struct NpcPath {
-    pub goal: Vec2,
+    pub path: Option<Vec<IVec2>>,
+}
+
+#[derive(Component, Clone, Copy)]
+pub enum NpcState {
+    Attack,
+    Escape,
+    Chase,
+    Chill,
+    Dead,
 }

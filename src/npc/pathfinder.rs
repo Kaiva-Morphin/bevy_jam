@@ -4,7 +4,7 @@ use pathfinding::prelude::{astar, bfs};
 use std::vec::IntoIter;
 use crate::{map::{plugin::TrespassableCells, tilemap::{TransformToGrid}}, player::components::Player};
 
-use super::components::{Hunter, NpcPath};
+use super::components::{Hunter, NpcPath, NpcState};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Pos(IVec2);
@@ -36,7 +36,10 @@ impl Pos {
         let mut hardmoves = HashSet::new();
         for i in 0..moves.len() {
             for j in i + 1..moves.len() {
-                hardmoves.insert(moves[i] + moves[j] - pos);
+                let hardmove = moves[i] + moves[j] - pos;
+                if trespassable.contains(&hardmove) {
+                    hardmoves.insert(hardmove);
+                }
             }
         }
         let mut out = Vec::with_capacity(8);
@@ -53,26 +56,56 @@ impl Pos {
     }
 }
 
-pub fn process_pathfinding(
-    player_transform: Query<&Transform, (With<Player>, Without<Hunter>)>,
-    mut hunters_transform: Query<(&mut Transform, &mut NpcPath), With<Hunter>>,
-    trespassable: Res<TrespassableCells>,
-    transformer: Res<TransformToGrid>,
-) {
+pub fn pathfinder(
+    start_ipos: IVec2,
+    end_ipos: IVec2,
+    trespassable: &Res<TrespassableCells>,
+    transformer: &Res<TransformToGrid>,
+    npc_state: NpcState,
+) -> Option<Vec<IVec2>> {
     if trespassable.ready && transformer.ready {
-        let player_pos = player_transform.single().translation.xy();
-        let player_ipos = transformer.from_world(player_pos).as_ivec2();
-        for (hunter_transform, mut hunter_path) in hunters_transform.iter_mut() {
-            let hunter_pos = hunter_transform.translation.xy();
-            let hunter_ipos = transformer.from_world(hunter_pos).as_ivec2();
-            if let Some(path) = find_path(&Pos(hunter_ipos), &Pos(player_ipos), &trespassable) {
-                hunter_path.path = path.into_iter().map(|x| x.0.as_vec2()).collect();
+        match npc_state {
+            NpcState::Chase => {
+                if let Some(path) = find_path_huncha(&Pos(start_ipos), &Pos(end_ipos), trespassable) {
+                    if path.len() > 5 {
+                        return Some(path[0..path.len() - 4].into_iter().map(|x| x.0).collect());
+                    } else {
+                        return None;
+                    }
+                }
             }
+            NpcState::Escape => {
+                if let Some(path) = find_path_hunesc(&Pos(start_ipos), &Pos(end_ipos), trespassable) {
+                    if path.len() > 1 {
+                        return Some(path.into_iter().map(|x| x.0).collect());
+                    } else {
+                        return None;
+                    }
+                }
+            }
+            _ => {}
         }
     }
+    None
 }
 
-fn find_path(
+fn find_path_hunesc(
+    start: &Pos,
+    end: &Pos,
+    trespassable: &Res<TrespassableCells>,
+) -> Option<Vec<Pos>>{
+    if let Some(path) = astar(
+    start,
+    |p| p.successors(&trespassable.cells),
+    |p| 999 - p.weight(end),
+    |p| p.0.distance_squared(end.0) > 25)
+    {
+        return Some(path.0)
+    }
+    None
+}
+
+fn find_path_huncha(
     start: &Pos,
     end: &Pos,
     trespassable: &Res<TrespassableCells>,
@@ -83,7 +116,6 @@ fn find_path(
     |p| p.weight(end),
     |p| p == end)
     {
-        // println!("did sth");
         return Some(path.0)
     }
     None
