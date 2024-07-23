@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
+use crate::characters::animation::AnimationController;
 use crate::core::camera::plugin::CameraFollow;
 
 use bevy::math::{uvec2, vec2};
@@ -52,16 +53,16 @@ pub fn spawn_player(
         KinematicCharacterController::default(),
         PlayerController::default(),
         Player,
+        AnimationController::default(),
     )).with_children(|commands| {commands.spawn((
         SpriteBundle{
             texture: asset_server.load("vampire.png"),
             ..default()
         },
         TextureAtlas{
-            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 18), 3, 4, None, None)),
+            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 20), 7, 3, Some(uvec2(1, 1)), None)),
             index: 2
-        },
-        PlayerAnimationState::default()
+        }
     ));});
 }
 
@@ -84,15 +85,16 @@ impl Default for SpeedCFG {
 }
 
 pub fn player_controller(
-    mut player_q: Query<(&mut KinematicCharacterController, &mut PlayerController, &mut CameraFollow, &Transform), Without<PlayerAnimationState>>,
-    mut player_sprite_q: Query<(&mut TextureAtlas, &mut Transform, &mut PlayerAnimationState), Without<PlayerController>>,
+    mut player_q: Query<(&mut KinematicCharacterController, &mut PlayerController, &mut CameraFollow, &Transform), With<Player>>,
+    mut animation_controller: Query<&mut AnimationController, With<Player>>,
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     mut speed_cfg: Local<SpeedCFG>,
     mut egui_context: EguiContexts,
 ){  
+    
+    //
     let ctx = egui_context.ctx_mut();
-
     egui::Window::new("SLIDERS").show(ctx, |ui|{
         ui.add(Slider::new(&mut speed_cfg.max_speed, 1. ..= 10_000.).text("MAX SPEED"));
         ui.add(Slider::new(&mut speed_cfg.accumulation_grain, 1. ..= 10_000.).text("ACCUMULATION GRAIN"));
@@ -100,6 +102,8 @@ pub fn player_controller(
     });
 
     let (mut character_controller, mut controller, mut follow, player_transform) = player_q.single_mut();
+    let mut animation_controller = animation_controller.single_mut();
+
 
     follow.speed = speed_cfg.follow_speed;
 
@@ -111,32 +115,34 @@ pub fn player_controller(
     controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * speed_cfg.max_speed, time.delta_seconds() * speed_cfg.accumulation_grain);
     if controller.accumulated_velocity.length() > speed_cfg.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * speed_cfg.max_speed}
     character_controller.translation = Some(controller.accumulated_velocity * time.delta_seconds());
+    
+    
 
-    let (mut layout, mut transform, mut anim) = player_sprite_q.single_mut();
+    //let (mut layout, mut transform, mut anim) = player_sprite_q.single_mut();
     
     if input_dir.x.abs() < 0.1 { // x axis is priotirized 
         if input_dir.y.abs() > 0.1 {
-            if input_dir.y.is_positive(){anim.dir = Direction::Up}
-            if input_dir.y.is_negative(){anim.dir = Direction::Down}
+            if input_dir.y.is_positive(){animation_controller.turn_up()}
+            if input_dir.y.is_negative(){animation_controller.turn_down()}
         }
     } else {
-        if input_dir.x.is_positive(){anim.dir = Direction::Right}
-        if input_dir.x.is_negative(){anim.dir = Direction::Left}
+        if input_dir.x.is_positive(){animation_controller.turn_right()}
+        if input_dir.x.is_negative(){animation_controller.turn_left()}
     }
-
-    let index = match anim.dir {
-        Direction::Up => {6},
-        Direction::Right => {9},
-        Direction::Down => {0},
-        Direction::Left => {3},
-    };
-
-    transform.translation.y = ((time.elapsed_seconds() * 5.) as i32 % 2) as f32 * 0.5;
+    if controller.accumulated_velocity.length() > 0.1 {
+        animation_controller.play_walk();
+    } else {
+        animation_controller.play_idle_priority(1);
+    }
+    if keyboard.just_pressed(KeyCode::KeyB){
+        animation_controller.play_hurt();
+    }
+    /*transform.translation.y = ((time.elapsed_seconds() * 5.) as i32 % 2) as f32 * 0.5;
     if controller.accumulated_velocity.length() > 0.1 {
         let mut anim_offset = ((time.elapsed_seconds() * 5.) as i32 % 4) as usize;
         if anim_offset == 3 {anim_offset = 1} // wrap
         layout.index = index + anim_offset;
     } else {
         layout.index = index + 1;
-    }
+    }*/
 }

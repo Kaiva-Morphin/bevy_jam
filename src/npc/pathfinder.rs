@@ -52,7 +52,7 @@ impl Pos {
         out.into_iter()
     }
     fn weight(&self, end: &Pos) -> i32{
-        (self.0.x - end.0.x).abs() + (self.0.y - end.0.y).abs() * 5
+        (self.0.x - end.0.x).abs() + (self.0.y - end.0.y).abs() * 2
     }
 }
 
