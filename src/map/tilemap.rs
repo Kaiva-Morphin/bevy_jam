@@ -53,11 +53,13 @@ pub struct TransformToGrid{
     ready: bool
 }
 
-
 impl TransformToGrid{
     pub fn from_world(&self, position: Vec2) -> Vec2{
-        ((vec2(0., self.height) + self.transform) - position) / self.grid_size * vec2(-1., 1.)
+        ((vec2(0., self.height) + self.transform) - position) / self.grid_size * vec2(-1., 1.) - 0.5
     }    
+    pub fn to_world(&self, position: Vec2) -> Vec2{
+        (vec2(0., self.height) + self.transform) - position * self.grid_size * vec2(-1., 1.) + self.grid_size * vec2(0.5, -0.5)
+    }   
 }
 
 

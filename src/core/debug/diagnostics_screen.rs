@@ -157,8 +157,7 @@ impl ScreenDiagnostics {
                         ),
                         Name::new(format!("path: {path}"))
                     ));
-                } else {
-                    if let Some(parent) = self.layout_nodes.get(&line.layout){
+                } else if let Some(parent) = self.layout_nodes.get(&line.layout){
                         line.entity = Some(
                             commands.spawn((
                                 TextBundle::from_sections([
@@ -192,8 +191,6 @@ impl ScreenDiagnostics {
                     } else {
                         warn!("Cant find parent node for {:?}", line.layout);
                     }
-                }
-
             } else {
                 warn!("Attemt to update non-existing line: {path}");
             }
@@ -423,12 +420,12 @@ fn setup(
     );
     diagnostics.add_line(
         "fps_avg", 
-        DiagnosticsLine::new(format!("?")).with_postfix(" avg fps".to_owned()).with_postfix_color(Color::Srgba(Srgba::gray(0.5))),
+        DiagnosticsLine::new("?".to_string()).with_postfix(" avg fps".to_owned()).with_postfix_color(Color::Srgba(Srgba::gray(0.5))),
         ScreenDiagnosticsLineLayout::RightDown
     );
     diagnostics.add_line(
         "fps", 
-        DiagnosticsLine::new(format!("?")).with_postfix(" fps".to_owned()).with_postfix_color(Color::Srgba(Srgba::gray(0.5))), 
+        DiagnosticsLine::new("?".to_string()).with_postfix(" fps".to_owned()).with_postfix_color(Color::Srgba(Srgba::gray(0.5))), 
         ScreenDiagnosticsLineLayout::RightDown
     );
     commands.insert_resource(diagnostics);

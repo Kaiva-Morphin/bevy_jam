@@ -4,6 +4,7 @@ mod npc;
 mod map;
 pub mod systems;
 
+
 use core::camera::plugin::EnhancedCameraPlugin;
 use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
 use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
@@ -21,7 +22,7 @@ fn main() {
         core::default::plugin::DefaultPlugin,
         SwitchableEguiInspectorPlugin,
         ScreenDiagnosticsPlugin,
-        TileMapPlugin
+        TileMapPlugin,
     ))
     .insert_resource(DayCycle {time: 0., is_day: true})
     .add_plugins((

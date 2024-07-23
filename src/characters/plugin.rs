@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::generator::{CharacterGenerator, CharacterGeneratorPlugin};
+use super::{animation::update_sprites, generator::{CharacterGenerator, CharacterGeneratorPlugin}};
 
 
 
@@ -21,11 +21,9 @@ pub struct CharacterAnimationPlugin;
 
 impl Plugin for CharacterAnimationPlugin{
     fn build(&self, app: &mut bevy::prelude::App) {
-        
+        app.add_systems(PostUpdate, update_sprites);
     }
 }
-
-
 
 
 

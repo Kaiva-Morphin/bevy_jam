@@ -1,7 +1,7 @@
 use bevy::{math::{uvec2, vec3}, prelude::*};
 use rand::Rng;
 
-use super::character::CharacterLayout;
+use super::characters::CharacterLayout;
 
 const NPC_BODY : &'static str = "npc/body.png";
 const NPC_EYE : &'static str = "npc/eye.png";

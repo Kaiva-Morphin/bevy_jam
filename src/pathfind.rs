@@ -1,4 +1,4 @@
-use bevy::{math::uvec2, utils::hashbrown::HashSet};
+use bevy::{math::{ivec2, uvec2, IVec2}, utils::hashbrown::HashSet};
 use pathfinding::prelude::astar;
 
 
@@ -19,6 +19,9 @@ impl Pos {
     let &Pos(x, y) = self;
     vec![Pos(x+1,y), Pos(x-1,y), Pos(x,y+1), Pos(x,y-1)]
          .into_iter().map(|p| (p, 1)).collect()
+  }
+  fn ivec2(vec: &IVec2) -> Self{
+    Pos(vec.x, vec.y)
   }
 }
 
@@ -43,7 +46,7 @@ fn main() {
         }
     }
 
-
+    
 
     let start = Pos(0, 0);
     let GOAL = Pos(0, 3);
@@ -51,6 +54,8 @@ fn main() {
         &start,
         |p| {
             let mut moves = vec![];
+            let pos = ivec2(p.0, p.1);
+            //let has = |val: &IVec2| allowed_cells.contains(val);
             let mov = Pos(p.0 + 1, p.1);
             if allowed_cells.contains(&mov){moves.push((mov, 1));};
             let mov = Pos(p.0 - 1, p.1);
@@ -59,6 +64,8 @@ fn main() {
             if allowed_cells.contains(&mov){moves.push((mov, 1));};
             let mov = Pos(p.0, p.1 - 1);
             if allowed_cells.contains(&mov){moves.push((mov, 1));};
+
+
             moves
         },
         |p| p.distance(&GOAL), //  / 3

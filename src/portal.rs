@@ -40,8 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ..default()
             }),
     )
-    .add_plugins(SwitchableEguiInspectorPlugin)
-    .add_plugins(HanabiPlugin);
+    .add_plugins(SwitchableEguiInspectorPlugin);
 
     #[cfg(feature = "examples_world_inspector")]
     app.add_plugins(WorldInspectorPlugin::default());

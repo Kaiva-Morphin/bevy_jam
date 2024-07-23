@@ -1,7 +1,9 @@
-mod core;
-mod map;
+pub mod core;
+pub mod player;
+pub mod map;
+pub mod characters;
 
-
+use crate::characters::animation::*;
 use core::camera::plugin::CameraFollow;
 use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
 use core::debug::diagnostics_screen::plugin::{ScreenDiagnostics, ScreenDiagnosticsPlugin};
@@ -17,12 +19,13 @@ use bevy_inspector_egui::egui::{self, Slider};
 use bevy_rapier2d::control::KinematicCharacterController;
 use bevy_rapier2d::prelude::*;
 use bevy::prelude::*;
+use characters::animation::AnimationController;
+use characters::plugin::CharacterAnimationPlugin;
 use map::plugin::TileMapPlugin;
 use map::tilemap::TransformToGrid;
 use pathfinding::num_traits::Signed;
 
 use bevy_hanabi::prelude::*;
-use pathfinding::prelude::astar;
 
 fn main() {
     let mut app = App::new();
@@ -31,6 +34,7 @@ fn main() {
         core::default::plugin::DefaultPlugin,
         SwitchableEguiInspectorPlugin,
         ScreenDiagnosticsPlugin,
+        CharacterAnimationPlugin,
         TileMapPlugin
     ));
     app.add_plugins(HanabiPlugin);
@@ -49,19 +53,6 @@ impl Default for PlayerController {
     }
 }
 
-#[derive(Default, Debug)]
-enum Direction {
-    Up,
-    Right,
-    #[default]
-    Down,
-    Left
-}
-
-#[derive(Component, Default)]
-struct PlayerAnimationState{
-    pub dir: Direction
-}
 
 #[derive(Component)]
 struct BatEffect;
@@ -79,18 +70,26 @@ fn setup(
         Collider::ball(5.),
         KinematicCharacterController::default(),
         PlayerController::default(),
+
+        AnimationController::default(),
     )).with_children(|commands| {commands.spawn((
-        SpriteBundle{
+        /*SpriteBundle{
             texture: asset_server.load("vampire.png"),
             ..default()
         },
         TextureAtlas{
-            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 18), 3, 4, None, None)),
+            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 20), 7, 3, Some(uvec2(1, 1)), None)),
             index: 2
+        }*/
+        SpriteBundle{
+            texture: asset_server.load("hunter.png"),
+            ..default()
         },
-        PlayerAnimationState::default()
+        TextureAtlas{
+            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(16, 20), 7, 3, Some(uvec2(1, 1)), None)),
+            index: 2
+        }
     ));});
-
 
     let sprite_size = UVec2::new(48, 16);
     let sprite_grid_size = UVec2::new(3,  1);
@@ -209,24 +208,16 @@ impl Default for SpeedCFG {
 }
 
 fn update(
-    mut player_q: Query<(&mut KinematicCharacterController, &mut PlayerController, &mut CameraFollow, &Transform), Without<PlayerAnimationState>>,
-    mut player_sprite_q: Query<(&mut TextureAtlas, &mut Transform, &mut PlayerAnimationState), Without<PlayerController>>,
+    mut player_q: Query<(&mut KinematicCharacterController, &mut PlayerController, &mut CameraFollow, &Transform)>,
+    mut animation_controller: Query<&mut AnimationController>,
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
     mut speed_cfg: Local<SpeedCFG>,
     mut egui_context: EguiContexts,
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut gizmos: Gizmos,
-    ldtk_projects: Query<&Handle<LdtkProject>>,
-    ldtk_project_assets: Res<Assets<LdtkProject>>,
-    levels: Query<(&LevelIid, &GlobalTransform)>,
-    transformer: Res<TransformToGrid>
 ){  
     
     //
     let ctx = egui_context.ctx_mut();
-    gizmos.line_2d(Vec2::ZERO, Vec2::ONE * 5., Color::Srgba(RED));
     egui::Window::new("SLIDERS").show(ctx, |ui|{
         ui.add(Slider::new(&mut speed_cfg.max_speed, 1. ..= 10_000.).text("MAX SPEED"));
         ui.add(Slider::new(&mut speed_cfg.accumulation_grain, 1. ..= 10_000.).text("ACCUMULATION GRAIN"));
@@ -234,20 +225,8 @@ fn update(
     });
 
     let (mut character_controller, mut controller, mut follow, player_transform) = player_q.single_mut();
-    
-    for (level_iid, level_transform) in levels.iter() {
-        let ldtk_project = ldtk_project_assets
-            .get(ldtk_projects.single())
-            .expect("ldtk project should be loaded before player is spawned");
-        let level = ldtk_project
-            .get_raw_level_by_iid(level_iid.get())
-            .expect("level should exist in only project");
+    let mut animation_controller = animation_controller.single_mut();
 
-        let level_size = ivec2(level.px_wid, level.px_hei);
-
-        let grid_pos = ((vec2(0., level_size.y as f32) + level_transform.translation().xy()) - player_transform.translation.xy()).as_ivec2() / ivec2(16, 16);
-        println!("{}", transformer.from_world(player_transform.translation.xy()) );
-    }
 
     follow.speed = speed_cfg.follow_speed;
 
@@ -259,34 +238,39 @@ fn update(
     controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * speed_cfg.max_speed, time.delta_seconds() * speed_cfg.accumulation_grain);
     if controller.accumulated_velocity.length() > speed_cfg.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * speed_cfg.max_speed}
     character_controller.translation = Some(controller.accumulated_velocity * time.delta_seconds());
+    
+    
 
-    let (mut layout, mut transform, mut anim) = player_sprite_q.single_mut();
+    //let (mut layout, mut transform, mut anim) = player_sprite_q.single_mut();
     
     if input_dir.x.abs() < 0.1 { // x axis is priotirized 
         if input_dir.y.abs() > 0.1 {
-            if input_dir.y.is_positive(){anim.dir = Direction::Up}
-            if input_dir.y.is_negative(){anim.dir = Direction::Down}
+            if input_dir.y.is_positive(){animation_controller.turn_up()}
+            if input_dir.y.is_negative(){animation_controller.turn_down()}
         }
     } else {
-        if input_dir.x.is_positive(){anim.dir = Direction::Right}
-        if input_dir.x.is_negative(){anim.dir = Direction::Left}
+        if input_dir.x.is_positive(){animation_controller.turn_right()}
+        if input_dir.x.is_negative(){animation_controller.turn_left()}
     }
-
-    let index = match anim.dir {
-        Direction::Up => {6},
-        Direction::Right => {9},
-        Direction::Down => {0},
-        Direction::Left => {3},
-    };
-
-    transform.translation.y = ((time.elapsed_seconds() * 5.) as i32 % 2) as f32 * 0.5;
+    if controller.accumulated_velocity.length() > 0.1 {
+        animation_controller.play_walk();
+    } else {
+        animation_controller.play_idle_priority(1);
+    }
+    if keyboard.just_pressed(KeyCode::KeyB){
+        animation_controller.play_hurt();
+    }
+    if keyboard.just_pressed(KeyCode::KeyV){
+        animation_controller.play_hunter_throw();
+    }
+    /*transform.translation.y = ((time.elapsed_seconds() * 5.) as i32 % 2) as f32 * 0.5;
     if controller.accumulated_velocity.length() > 0.1 {
         let mut anim_offset = ((time.elapsed_seconds() * 5.) as i32 % 4) as usize;
         if anim_offset == 3 {anim_offset = 1} // wrap
         layout.index = index + anim_offset;
     } else {
         layout.index = index + 1;
-    }
+    }*/
 
 
 
