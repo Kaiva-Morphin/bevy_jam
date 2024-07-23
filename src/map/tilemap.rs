@@ -1,4 +1,4 @@
-use bevy::{math::vec2, prelude::*, utils::{HashMap, HashSet}};
+use bevy::{math::{ivec2, vec2}, prelude::*, utils::{HashMap, HashSet}};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::{dynamics::RigidBody, geometry::{Collider, Friction}};
 
@@ -15,8 +15,9 @@ pub fn pre_setup(
     commands.insert_resource(TransformToGrid{
         height: 0.,
         transform: vec2(0., 0.),
-        grid_size: vec2(16., 16.),
-        ready: false
+        cell_size: vec2(16., 16.),
+        ready: false,
+        grid_size: ivec2(0, 0)
     });
 }
 
@@ -38,8 +39,9 @@ pub fn watcher (
         commands.insert_resource(TransformToGrid{
             height: level.px_hei as f32,
             transform: level_transform.translation().xy(),
-            grid_size: vec2(16., 16.),
-            ready: true
+            cell_size: vec2(16., 16.),
+            ready: true,
+            grid_size: ivec2(level.px_wid / 16, level.px_hei / 16)
         });
         return;
     }
@@ -49,17 +51,21 @@ pub fn watcher (
 pub struct TransformToGrid{
     height: f32,
     transform: Vec2,
-    grid_size: Vec2,
-    ready: bool
+    cell_size: Vec2,
+    pub grid_size: IVec2,
+    pub ready: bool
 }
 
 impl TransformToGrid{
     pub fn from_world(&self, position: Vec2) -> Vec2{
-        ((vec2(0., self.height) + self.transform) - position) / self.grid_size * vec2(-1., 1.) - 0.5
-    }    
-    pub fn to_world(&self, position: Vec2) -> Vec2{
-        (vec2(0., self.height) + self.transform) - position * self.grid_size * vec2(-1., 1.) + self.grid_size * vec2(0.5, -0.5)
-    }   
+        ((vec2(0., self.height) + self.transform) - position) / self.cell_size * vec2(-1., 1.)
+    }
+    pub fn from_world_i32(&self, position: Vec2) -> IVec2{
+        (((vec2(0., self.height) + self.transform) - position) / self.cell_size * vec2(-1., 1.)).floor().as_ivec2()
+    }
+    pub fn to_world(&self, position: IVec2) -> Vec2{
+        (vec2(0., self.height) + self.transform) - position.as_vec2() * self.cell_size * vec2(-1., 1.) + self.cell_size * vec2(0.5, -0.5)
+    } 
 }
 
 
@@ -150,7 +156,6 @@ pub fn spawn_tile_collision(
                     grid_size,
                     ..
                 } = level.layer_instances()[0];
-
                 // combine wall tiles into flat "plates" in each individual row
                 let mut plate_stack: Vec<Vec<Plate>> = Vec::new();
 

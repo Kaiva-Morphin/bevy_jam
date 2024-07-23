@@ -1,7 +1,7 @@
 use bevy::{math::ivec2, prelude::*, utils::HashSet};
 use bevy_ecs_ldtk::prelude::*;
 
-use super::tilemap;
+use super::tilemap::{self, TransformToGrid};
 
 pub struct TileMapPlugin;
 
@@ -20,7 +20,8 @@ impl Plugin for TileMapPlugin {
         })
         .add_systems(PreStartup, tilemap::pre_setup)
         .add_systems(Update, tilemap::watcher)
-        .add_systems(Update, (tilemap::spawn_tile_collision, spawner_spawn_listener, trespassable_spawn_listener))
+        .add_systems(Update, (tilemap::spawn_tile_collision, spawner_spawn_listener))
+        .add_systems(PostUpdate, trespassable_spawn_listener)
         .register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner")
         .register_ldtk_int_cell::<tilemap::TileObsticleBundle>(1)
         .register_ldtk_int_cell::<TrespassableCellBundle>(2);
@@ -62,13 +63,14 @@ fn trespassable_spawn_listener(
     //mut commands: Commands,
     entity_q: Query<&GridCoords, Added<TrespassableCell>>,
     mut cells: ResMut<TrespassableCells>,
+    transfromer: Res<TransformToGrid>,
     //level_query: Query<(Entity, &LevelIid)>,
     //ldtk_projects: Query<&Handle<LdtkProject>>,
     //ldtk_project_assets: Res<Assets<LdtkProject>>,
 ){
-    if !entity_q.is_empty(){
+    if !entity_q.is_empty() && transfromer.ready {
         for coords in entity_q.iter(){
-            cells.cells.insert(ivec2(coords.x, coords.y));
+            cells.cells.insert(ivec2(coords.x, transfromer.grid_size.y - coords.y - 1));
         }
         println!("ADDED! {} cells", cells.cells.len());
         cells.ready = true;
@@ -77,9 +79,8 @@ fn trespassable_spawn_listener(
 
 
 
-
-fn spawner_spawn_listener(
-    entity_q: Query<&GridCoords, Added<EntitySpawner>>,
+fn spawner_spawn_listener( // todo: rm
+    entity_q: Query<&GridCoords, With<EntitySpawner>>,
 ){
     for coords in entity_q.iter(){
         println!("Spawned enemy spawner {:?}", coords);

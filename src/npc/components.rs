@@ -18,3 +18,22 @@ pub struct DespawnTimer {
 pub struct HunterTimer {
     pub timer: Timer
 }
+
+#[derive(Component)]
+pub struct NpcVelAccum {
+    pub v: Vec2,
+}
+
+#[derive(Component)]
+pub struct NpcPath {
+    pub path: Option<Vec<IVec2>>,
+}
+
+#[derive(Component, Clone, Copy)]
+pub enum NpcState {
+    Attack,
+    Escape,
+    Chase,
+    Chill,
+    Dead,
+}
