@@ -3,7 +3,7 @@ mod player;
 mod npc;
 mod map;
 pub mod systems;
-
+mod characters;
 
 use core::camera::plugin::EnhancedCameraPlugin;
 use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
@@ -11,6 +11,7 @@ use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
 
 use bevy::prelude::*;
 
+use characters::plugin::CharacterAnimationPlugin;
 use map::plugin::TileMapPlugin;
 use npc::NPCPlugin;
 use player::PlayerPlugin;
@@ -28,6 +29,7 @@ fn main() {
     .add_plugins((
         PlayerPlugin,
         NPCPlugin,
+        CharacterAnimationPlugin,
     ))
     .add_systems(Update, update_daycycle)
     .run();
