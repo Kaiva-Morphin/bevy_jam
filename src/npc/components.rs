@@ -29,7 +29,7 @@ pub struct NpcPath {
     pub path: Option<Vec<IVec2>>,
 }
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, PartialEq, Debug)]
 pub enum NpcState {
     Attack,
     Escape,
@@ -42,4 +42,9 @@ pub enum NpcState {
 pub struct NpcsOnMap {
     pub hunters: u32,
     pub civilians: u32,
+}
+
+#[derive(Component)]
+pub struct ChillTimer {
+    pub timer: Timer
 }
