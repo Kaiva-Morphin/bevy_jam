@@ -1,10 +1,8 @@
-use bevy::{color::palettes::css::RED, math::ivec2, prelude::*, utils::{hashbrown::HashSet}};
-use bevy_ecs_ldtk::utils::translation_to_grid_coords;
-use pathfinding::prelude::{astar, bfs};
-use std::vec::IntoIter;
-use crate::{map::{plugin::TrespassableCells, tilemap::{TransformToGrid}}, player::components::Player};
+use bevy::{math::ivec2, prelude::*, utils::HashSet};
+use pathfinding::prelude::astar;
+use crate::map::{plugin::TrespassableCells, tilemap::TransformToGrid};
 
-use super::components::{Hunter, NpcPath, NpcState};
+use super::components::NpcState;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Pos(IVec2);
@@ -14,13 +12,6 @@ const MOVES: [IVec2; 4] = [
     ivec2(0, 1),
     ivec2(-1, 0),
     ivec2(0, -1),
-];
-
-const DIAGMOVES: [IVec2; 4] = [
-    ivec2(1, 1),
-    ivec2(1, -1),
-    ivec2(-1, 1),
-    ivec2(-1, -1),
 ];
 
 impl Pos {
@@ -83,6 +74,15 @@ pub fn pathfinder(
                     }
                 }
             }
+            NpcState::Chill => {
+                if let Some(path) = find_path_huncha(&Pos(start_ipos), &Pos(end_ipos), trespassable) {
+                    if path.len() > 1 {
+                        return Some(path.into_iter().map(|x| x.0).collect());
+                    } else {
+                        return None;
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -97,7 +97,7 @@ fn find_path_hunesc(
     if let Some(path) = astar(
     start,
     |p| p.successors(&trespassable.cells),
-    |p| 9999 - p.0.distance_squared(end.0), //p.weight(end),
+    |p| 9999 - p.0.distance_squared(end.0),
     |p| p.0.distance_squared(end.0) > 25)
     {
         return Some(path.0)

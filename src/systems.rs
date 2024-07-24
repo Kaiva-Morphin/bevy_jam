@@ -1,10 +1,5 @@
 use bevy::prelude::*;
 
-pub const PLAYER_CG: u32 = 0b0000_0000_0000_0001;
-pub const NPC_CG: u32 = 0b0000_0000_0000_0010;
-pub const STRUCTURES_CG: u32 = 0b0000_0000_0000_0100;
-pub const BULLET_CG: u32 = 0b0000_0000_0000_1000;
-
 #[derive(Resource)]
 pub struct DayCycle {
     pub time: f32,

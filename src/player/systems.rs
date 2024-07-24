@@ -3,17 +3,18 @@ use bevy_rapier2d::prelude::*;
 
 use crate::characters::animation::AnimationController;
 use crate::core::camera::plugin::CameraFollow;
-
 use bevy::math::{uvec2, vec2};
 use bevy_inspector_egui::bevy_egui::EguiContexts;
 use bevy_inspector_egui::egui::{self, Slider};
 use bevy_rapier2d::control::KinematicCharacterController;
-use bevy_rapier2d::prelude::*;
-use bevy::prelude::*;
 use pathfinding::num_traits::Signed;
 
-
 use super::components::*;
+
+pub const PLAYER_CG: u32 = 0b0000_0000_0000_0001;
+pub const NPC_CG: u32 = 0b0000_0000_0000_0010;
+pub const STRUCTURES_CG: u32 = 0b0000_0000_0000_0100;
+pub const BULLET_CG: u32 = 0b0000_0000_0000_1000;
 
 #[derive(Component)]
 pub struct PlayerController{
@@ -53,7 +54,12 @@ pub fn spawn_player(
         KinematicCharacterController::default(),
         PlayerController::default(),
         Player,
+        ActiveEvents::COLLISION_EVENTS,
         AnimationController::default(),
+        CollisionGroups::new(
+            Group::from_bits(PLAYER_CG).unwrap(),
+            Group::from_bits(BULLET_CG | STRUCTURES_CG).unwrap()
+        ),
     )).with_children(|commands| {commands.spawn((
         SpriteBundle{
             texture: asset_server.load("vampire.png"),
@@ -62,7 +68,7 @@ pub fn spawn_player(
         TextureAtlas{
             layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 20), 7, 3, Some(uvec2(1, 1)), None)),
             index: 2
-        }
+        },
     ));});
 }
 

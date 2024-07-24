@@ -1,34 +1,42 @@
 use std::time::Duration;
 
-use bevy::{color::palettes::css::RED, math::uvec2, prelude::*};
+use bevy::{color::palettes::css::{BLUE, RED}, math::uvec2, prelude::*};
+use bevy_ecs_ldtk::GridCoords;
 use bevy_rapier2d::prelude::*;
+use rand::{thread_rng, Rng};
 
-use crate::{characters::animation::*, map::{plugin::TrespassableCells, tilemap::TransformToGrid}, player::{components::Player, systems::PlayerController}, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG};
+use crate::{
+    characters::animation::*,
+    map::{plugin::{EntitySpawner, TrespassableCells}, tilemap::TransformToGrid},
+    player::{components::Player, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}},
+};
 
 use super::{components::*, pathfinder};
 
 const THRESHOLD: f32 = 100.0;
 const UPP_THRESHOLD: f32 = THRESHOLD * 2.0;
-const CIV_MS: f32 = 30.0;
+const CIV_MAXSPEED: f32 = 40.0;
+const CIV_ACCEL: f32 = 350.0;
 const PROJ_V: f32 = 150.0;
 const HUNTER_TIMER: f32 = 0.5;
 const HUNTER_MAXSPEED: f32 = 50.0;
 const HUNTER_ACCEL: f32 = 450.0;
 
 pub fn spawn_civilian(
-    mut commands: Commands,
-    asset_server: ResMut<AssetServer>,
+    commands: &mut Commands,
+    asset_server: &mut ResMut<AssetServer>,
+    pos: Vec2,
 ) {
     commands.spawn((
         SpriteBundle {
             texture: asset_server.load("sprites/box.png"),
-            transform: Transform::from_xyz(40., 40., 0.),
+            transform: Transform::from_xyz(pos.x, pos.y, 0.),
             ..default()
         },
         Civilian,
         CollisionGroups::new(
             Group::from_bits(NPC_CG).unwrap(),
-            Group::from_bits(PLAYER_CG & STRUCTURES_CG).unwrap()
+            Group::from_bits(PLAYER_CG | STRUCTURES_CG).unwrap()
         ),
         RigidBody::KinematicPositionBased,
         Collider::ball(5.),
@@ -36,52 +44,62 @@ pub fn spawn_civilian(
         NpcPath {path: None},
         KinematicCharacterController::default(),
         NpcState::Chill,
+        ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
         Name::new("Civilian"),
     ));
 }
 
 pub fn manage_civilians(
     mut civilians_data: Query<(&Transform, &mut KinematicCharacterController,
-        &mut NpcVelAccum, &mut NpcPath, &mut NpcState), With<Civilian>>,
+        &mut NpcVelAccum, &mut NpcPath, &mut NpcState, &mut ChillTimer), With<Civilian>>,
     player_transform: Query<&Transform, With<Player>>,
     time: Res<Time>,
     transformer: Res<TransformToGrid>,
     trespassable: Res<TrespassableCells>,
-    mut prev_player_ipos: Local<IVec2>,
     mut gizmos: Gizmos,
+    mut prev_player_ipos: Local<IVec2>,
 ) {
     let player_pos = player_transform.single().translation.xy();
     let player_ipos = transformer.from_world_i32(player_pos);
     let dt = time.delta_seconds();
+    let mut rng = thread_rng();
     for (civ_transform, mut civ_controller,
         mut vel_accum , mut civ_path,
-        mut civ_state) in civilians_data.iter_mut() {
+        mut civ_state, mut chill_timer) in civilians_data.iter_mut() {
         let civ_pos = civ_transform.translation.xy();
         let civ_ipos = transformer.from_world_i32(civ_pos);
         match *civ_state {
             NpcState::Attack => todo!(),
-            NpcState::Chill => {
-                if civ_pos.distance(player_pos) < THRESHOLD {
-                    *civ_state = NpcState::Escape
-                }
-            },
             NpcState::Dead => todo!(),
+            NpcState::Chase => todo!(),
             state => {
-                if player_ipos != *prev_player_ipos {
-                    civ_path.path = pathfinder(civ_ipos, player_ipos, &trespassable, &transformer, state);
+                if state == NpcState::Chill {
+                    if civ_path.path.is_none() {
+                        chill_timer.timer.tick(Duration::from_secs_f32(dt));
+                        if chill_timer.timer.finished() {
+                            let end = civ_ipos + IVec2::new(rng.gen_range(0..4), rng.gen_range(0..4));
+                            if trespassable.cells.contains(&end) {
+                                civ_path.path = pathfinder(civ_ipos, end, &trespassable, &transformer, state);
+                            }
+                        }
+                    }
                 } else {
-                    let mut del = false;
-                    if let Some(path) = &mut civ_path.path {
-                        if civ_ipos == path[1] {
-                            path.remove(0);
-                        }
-                        if path.len() < 2 {
-                            del = true;
-                        }
+                    if player_ipos != *prev_player_ipos {
+                        civ_path.path = pathfinder(civ_ipos, player_ipos, &trespassable, &transformer, state);
                     }
-                    if del {
-                        civ_path.path = None;
+                }
+                
+                let mut del = false;
+                if let Some(path) = &mut civ_path.path {
+                    if civ_ipos == path[1] {
+                        path.remove(0);
                     }
+                    if path.len() < 2 {
+                        del = true;
+                    }
+                }
+                if del {
+                    civ_path.path = None;
                 }
                 
                 if let Some(path) = &civ_path.path {
@@ -107,11 +125,17 @@ pub fn manage_civilians(
                     //     animation_controller.play_idle_priority(1);
                     // }
 
-                    vel_accum.v = vel_accum.v.move_towards(move_dir.normalize_or_zero() * HUNTER_MAXSPEED, dt * HUNTER_ACCEL);
-                    if vel_accum.v.length() > HUNTER_MAXSPEED {
-                        vel_accum.v = vel_accum.v.normalize() * HUNTER_MAXSPEED
+                    vel_accum.v = vel_accum.v.move_towards(move_dir.normalize_or_zero() * CIV_MAXSPEED, dt * CIV_ACCEL);
+                    if vel_accum.v.length() > CIV_MAXSPEED {
+                        vel_accum.v = vel_accum.v.normalize() * CIV_MAXSPEED
                     }
                     civ_controller.translation = Some(vel_accum.v * dt);
+                } else {
+                    if civ_pos.distance(player_pos) > THRESHOLD {
+                        *civ_state = NpcState::Chill
+                    } else {
+                        *civ_state = NpcState::Escape
+                    }
                 }
             }
         }
@@ -120,13 +144,14 @@ pub fn manage_civilians(
 }
 
 pub fn spawn_hunter(
-    mut commands: Commands,
-    asset_server: ResMut<AssetServer>,
+    commands: &mut Commands,
+    asset_server: &mut ResMut<AssetServer>,
+    pos: Vec2,
 ) {
     commands.spawn((
         Name::new("Hunter"),
         RigidBody::KinematicPositionBased,
-        TransformBundle::default(),
+        TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
         VisibilityBundle::default(),
         Collider::ball(5.),
         Hunter,
@@ -135,11 +160,12 @@ pub fn spawn_hunter(
         KinematicCharacterController::default(),
         CollisionGroups::new(
             Group::from_bits(NPC_CG).unwrap(),
-            Group::from_bits(PLAYER_CG & STRUCTURES_CG).unwrap()
+            Group::from_bits(PLAYER_CG | STRUCTURES_CG).unwrap()
         ),
         HunterTimer { timer: Timer::new(Duration::from_secs_f32(HUNTER_TIMER), TimerMode::Repeating) },
         NpcState::Chase,
         AnimationController::default(),
+        ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
     )).with_children(|commands| {commands.spawn((
         SpriteBundle{
             texture: asset_server.load("hunter.png"),
@@ -156,12 +182,14 @@ pub fn manage_hunters(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>,
     mut hunters_data: Query<(&Transform, &mut KinematicCharacterController,
-        &mut NpcVelAccum, &mut NpcPath, &mut HunterTimer, &mut NpcState, &mut AnimationController), Without<Player>>,
+        &mut NpcVelAccum, &mut NpcPath, &mut HunterTimer, &mut NpcState,
+        &mut ChillTimer, &mut AnimationController), Without<Player>>,
     player_data: Query<(&Transform, &PlayerController), With<Player>>,
     transformer: Res<TransformToGrid>,
     trespassable: Res<TrespassableCells>,
     mut prev_player_ipos: Local<IVec2>,
     mut gizmos: Gizmos,
+    rapier_context: Res<RapierContext>,
     time: Res<Time>,
 ) {
     let player_data = player_data.single();
@@ -171,9 +199,14 @@ pub fn manage_hunters(
     let dt = time.delta_seconds();
     for (hunter_transform, mut hunter_controller,
         mut vel_accum , mut hunter_path,
-        mut hunter_timer, mut hunter_state, mut animation_controller) in hunters_data.iter_mut() {
+        mut hunter_timer, mut hunter_state, mut chill_timer,
+        mut animation_controller) in hunters_data.iter_mut() {
         let hunter_pos = hunter_transform.translation.xy();
         let hunter_ipos = transformer.from_world_i32(hunter_pos);
+        let direction = player_pos - hunter_pos;
+        let length = direction.length();
+        println!("{:?}", raycast(hunter_pos, direction / length, length, &rapier_context));
+        gizmos.line_2d(hunter_pos, player_pos, Color::Srgba(BLUE));
 
         match *hunter_state {
             NpcState::Attack => {
@@ -204,7 +237,7 @@ pub fn manage_hunters(
                             ..default()
                         },
                         RigidBody::Dynamic,
-                        Collider::cuboid(10., 10.),
+                        Collider::cuboid(3., 3.),
                         CollisionGroups::new(
                             Group::from_bits(BULLET_CG).unwrap(),
                             Group::from_bits(PLAYER_CG).unwrap()
@@ -216,6 +249,7 @@ pub fn manage_hunters(
                         },
                         DespawnTimer { timer: Timer::new(Duration::from_secs(6), TimerMode::Once) },
                         Projectile,
+                        Sensor,
                         ActiveEvents::COLLISION_EVENTS,
                         Sleeping::disabled(),
                     ));
@@ -235,21 +269,34 @@ pub fn manage_hunters(
 
             }
             state => {
-                if player_ipos != *prev_player_ipos {
-                    hunter_path.path = pathfinder(hunter_ipos, player_ipos, &trespassable, &transformer, state);
+                if state == NpcState::Chill {
+                    if hunter_path.path.is_none() {
+                        let mut rng = thread_rng();
+                        chill_timer.timer.tick(Duration::from_secs_f32(dt));
+                        if chill_timer.timer.finished() {
+                            let end = hunter_ipos + IVec2::new(rng.gen_range(0..4), rng.gen_range(0..4));
+                            if trespassable.cells.contains(&end) {
+                                hunter_path.path = pathfinder(hunter_ipos, end, &trespassable, &transformer, state);
+                            }
+                        }
+                    }
                 } else {
-                    let mut del = false;
-                    if let Some(path) = &mut hunter_path.path {
-                        if hunter_ipos == path[1] {
-                            path.remove(0);
-                        }
-                        if path.len() < 2 {
-                            del = true;
-                        }
+                    if player_ipos != *prev_player_ipos {
+                        hunter_path.path = pathfinder(hunter_ipos, player_ipos, &trespassable, &transformer, state);
                     }
-                    if del {
-                        hunter_path.path = None;
+                }
+                
+                let mut del = false;
+                if let Some(path) = &mut hunter_path.path {
+                    if hunter_ipos == path[1] {
+                        path.remove(0);
                     }
+                    if path.len() < 2 {
+                        del = true;
+                    }
+                }
+                if del {
+                    hunter_path.path = None;
                 }
                 
                 if let Some(path) = &hunter_path.path {
@@ -324,24 +371,76 @@ pub fn manage_projectiles(
 pub fn process_proj_collisions(
     mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
+    mut contact_force_events: EventReader<ContactForceEvent>,
     mut player: Query<(Entity, &mut Player)>,
     projectiles: Query<&Projectile>,
 ) {
     let (player_entity, player) = player.single_mut();
+    for contact_force_event in contact_force_events.read() {
+        println!("Received contact force event: {:?}", contact_force_event);
+    }
     for collision_event in collision_events.read() {
+        println!("{:?}", collision_event);
         if let CollisionEvent::Started(reciever_entity, sender_entity, _) = collision_event {
-            println!("{:?} {:?}", reciever_entity, sender_entity);
+            // println!("{:?} {:?}", reciever_entity, sender_entity);
             if let Ok(_) = projectiles.get(*sender_entity) { // todo: rm if process only proj
                 if *reciever_entity == player_entity {
-                    println!("hit");
+                    println!("PLAYER RECIEVED")
                 }
                 commands.entity(*sender_entity).despawn();
-            } else if let Ok(_) = projectiles.get(*reciever_entity) { // todo: rm if process only proj
-                if *sender_entity == player_entity {
-                    println!("hit");
-                }
-                commands.entity(*reciever_entity).despawn();
             }
         }
+    }
+}
+
+pub fn entity_spawner(
+    mut commands: Commands,
+    mut asset_server: ResMut<AssetServer>,
+    mut spawners: Query<(&mut EntitySpawner, &GlobalTransform)>,
+    mut npcs_on_map: ResMut<NpcsOnMap>,
+    time: Res<Time>,
+) {
+    let dt = time.delta_seconds();
+    let mut rand = thread_rng();
+    for (mut spawner, spawner_gpos) in spawners.iter_mut() {
+        spawner.timer.tick(Duration::from_secs_f32(dt));
+        if spawner.timer.finished() {
+            let spawner_pos = spawner_gpos.translation().xy();
+            if rand.gen_bool(0.5) {
+                if npcs_on_map.civilians < 1 {
+                    spawn_civilian(&mut commands, &mut asset_server, spawner_pos);
+                    npcs_on_map.civilians += 1;
+                }
+            } else {
+                if npcs_on_map.hunters < 1 {
+                    spawn_hunter(&mut commands, &mut asset_server, spawner_pos);
+                    npcs_on_map.hunters += 1;
+                }
+            }
+        }
+    }
+    // if let Ok(t) = spawner.get_single() {
+    //     println!("{:?}", transformer.from_world_i32(t.translation().xy()))
+    // }
+}
+
+fn raycast(
+    origin: Vec2,
+    dir: Vec2,
+    max_toi: f32,
+    rapier_context: &Res<RapierContext>,
+) -> Option<Entity> {
+    let solid = true;
+    let filter = QueryFilter::default();
+    let filter = filter.groups(CollisionGroups::new(
+        Group::all(),
+        Group::from_bits(STRUCTURES_CG | PLAYER_CG).unwrap())
+    );
+    if let Some((entity, _)) = rapier_context.cast_ray(
+        origin, dir, max_toi, solid, filter
+    ) {
+        return Some(entity);
+    } else {
+        return None;
     }
 }
