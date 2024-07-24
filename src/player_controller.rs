@@ -2,6 +2,10 @@ pub mod core;
 pub mod player;
 pub mod map;
 pub mod characters;
+pub mod npc;
+
+
+use crate::player::components::Player;
 
 use crate::characters::animation::*;
 use core::camera::plugin::CameraFollow;

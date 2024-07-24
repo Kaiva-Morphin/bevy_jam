@@ -21,13 +21,12 @@ impl Plugin for EnhancedCameraPlugin{
 #[derive(Component)]
 pub struct MainCamera;
 
+
 #[derive(Component, Default)]
 pub struct CameraFollow{
     pub speed: f32,
     pub order: u32
 }
-
-
 
 
 #[derive(Component, Default)]
@@ -81,7 +80,6 @@ fn setup_camera(
             composite_mode: BloomCompositeMode::Additive
         },
         CameraController{scale: 1., ..default()},
-        
         MotionBlurBundle {
             motion_blur: MotionBlur {
                 shutter_angle: 1.0,
