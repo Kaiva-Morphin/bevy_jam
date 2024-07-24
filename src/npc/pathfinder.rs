@@ -44,15 +44,15 @@ impl Pos {
         }
         let mut out = Vec::with_capacity(8);
         for i in moves {
-            out.push((Pos(i), 2))
+            out.push((Pos(i), 10))
         }
         for i in hardmoves {
-            out.push((Pos(i), 3))
+            out.push((Pos(i), 14))
         }
         out.into_iter()
     }
     fn weight(&self, end: &Pos) -> i32{
-        (self.0.x - end.0.x).abs() + (self.0.y - end.0.y).abs() * 2
+        (self.0.x - end.0.x).abs() + (self.0.y - end.0.y).abs() * 10
     }
 }
 
@@ -97,7 +97,7 @@ fn find_path_hunesc(
     if let Some(path) = astar(
     start,
     |p| p.successors(&trespassable.cells),
-    |p| 999 - p.weight(end),
+    |p| 9999 - p.0.distance_squared(end.0), //p.weight(end),
     |p| p.0.distance_squared(end.0) > 25)
     {
         return Some(path.0)
@@ -119,4 +119,5 @@ fn find_path_huncha(
         return Some(path.0)
     }
     None
+    
 }

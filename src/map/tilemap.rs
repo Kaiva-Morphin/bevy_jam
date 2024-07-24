@@ -6,10 +6,10 @@ pub fn pre_setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ){
-    let ldtk_handle = asset_server.load("testmap.ldtk");
+    let ldtk_handle = asset_server.load("map.ldtk");
     commands.spawn(LdtkWorldBundle {
         ldtk_handle,
-        transform: Transform::from_translation(Vec3::Z * -10.),
+        transform: Transform::from_translation(Vec3::Z * -300.),
         ..Default::default()
     });
     commands.insert_resource(TransformToGrid{

@@ -2,7 +2,7 @@ pub mod plugin{
 
 use std::{cell::RefCell, default, sync::Mutex};
 
-use bevy::{core_pipeline::{bloom::BloomSettings, tonemapping::{DebandDither, Tonemapping}}, prelude::*, render::camera::ScalingMode};
+use bevy::{core_pipeline::{bloom::{BloomCompositeMode, BloomPrefilterSettings, BloomSettings}, tonemapping::{DebandDither, Tonemapping}}, input::mouse::MouseWheel, prelude::*, render::camera::ScalingMode};
 use bevy_inspector_egui::egui::mutex::RwLock;
 
 use crate::core::functions::ExpDecay;
@@ -59,8 +59,8 @@ fn setup_camera(
                     min_width: 400.0,
                     min_height: 300.0,
                 },
-                near: -100.,
-                far: 100.,
+                near: -800.,
+                far: 800.,
                 ..default()
             },
             tonemapping: Tonemapping::None,
@@ -69,15 +69,35 @@ fn setup_camera(
             ..default()
         },
         MainCamera,
-        BloomSettings::default(),
-        CameraController{scale: 1., ..default()}
+        BloomSettings{
+            intensity: 0.5,
+            low_frequency_boost: 0.8,
+            low_frequency_boost_curvature: 0.8,
+            high_pass_frequency: 1.6,
+            prefilter_settings: BloomPrefilterSettings{
+                threshold: 0.6,
+                threshold_softness: 0.7
+            },
+            composite_mode: BloomCompositeMode::Additive
+        },
+        CameraController{scale: 1., ..default()},
     ));
 }
 
+struct CameraScale(f32);
+
+impl Default for CameraScale{
+    fn default() -> Self {
+        CameraScale(1.)
+    }
+}
+
 fn update_camera(
-    mut cameras_q: Query<(&mut Transform, &CameraController)>,
+    mut cameras_q: Query<(&mut Transform, &mut CameraController)>,
     targets_q: Query<(&Transform, &CameraFollow), (With<CameraFollow>, Without<CameraController>)>,
-    time: Res<Time>
+    time: Res<Time>,
+    mut evr_scroll: EventReader<MouseWheel>,
+    mut camera_scale: Local<CameraScale>
 ){
     let mut follow_position = Vec3::ZERO;
     let mut highest = 0;
@@ -89,8 +109,17 @@ fn update_camera(
             follow_speed = follow.speed;
         }
     }
+    
 
-    for (mut camera_transform, controller) in cameras_q.iter_mut(){
+    for ev in evr_scroll.read() {
+        camera_scale.0 -= ev.y * 0.1;
+        camera_scale.0 = camera_scale.0.clamp(0.5, 3.);
+    }
+
+    for (mut camera_transform, mut controller) in cameras_q.iter_mut(){
+        controller.scale = camera_scale.0 * camera_scale.0;
+        controller.scale_translation_speed = Some(10.);
+
         camera_transform.translation = camera_transform.translation.exp_decay(follow_position, follow_speed, time.delta_seconds());
         let Some(scale_speed) = controller.scale_translation_speed else {camera_transform.scale = Vec2::splat(controller.scale).extend(1.);continue};
         camera_transform.scale = Vec2::splat(camera_transform.scale.x.exp_decay(controller.scale, scale_speed, time.delta_seconds())).extend(1.);

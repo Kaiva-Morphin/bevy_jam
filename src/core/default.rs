@@ -6,7 +6,7 @@ pub mod plugin {
     use bevy_rapier2d::render::RapierDebugRenderPlugin;
     use bevy_rapier2d::prelude::*;
 
-    use crate::core::{camera::plugin::EnhancedCameraPlugin, debug::rapier_debug::plugin::SwitchableRapierDebugPlugin};
+    use crate::core::{camera::plugin::EnhancedCameraPlugin, debug::rapier_debug::plugin::SwitchableRapierDebugPlugin, post_processing::PostProcessPlugin};
     pub struct DefaultPlugin;
 
     impl Plugin for DefaultPlugin {
@@ -26,7 +26,8 @@ pub mod plugin {
                 RapierDebugRenderPlugin::default().disabled(),
                 RapierPhysicsPlugin::<NoUserData>::default(),
                 SwitchableRapierDebugPlugin,
-                EnhancedCameraPlugin
+                EnhancedCameraPlugin,
+                PostProcessPlugin
             ),
             );
             app.insert_resource(Msaa::Off);

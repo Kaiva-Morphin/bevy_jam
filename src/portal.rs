@@ -17,8 +17,6 @@ use bevy::{
     prelude::*,
 };
 use bevy_hanabi::prelude::*;
-#[cfg(feature = "examples_world_inspector")]
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 mod core;
 use crate::core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
@@ -42,8 +40,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .add_plugins(SwitchableEguiInspectorPlugin);
 
-    #[cfg(feature = "examples_world_inspector")]
-    app.add_plugins(WorldInspectorPlugin::default());
 
     app.add_systems(Startup, setup).run();
 

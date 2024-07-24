@@ -13,23 +13,22 @@ impl Plugin for TileMapPlugin {
         app.insert_resource(LevelSelection::Uid(0))
         .insert_resource(LdtkSettings {
             level_spawn_behavior: LevelSpawnBehavior::UseWorldTranslation {
-                load_level_neighbors: true,
+                load_level_neighbors: false,
             },
             set_clear_color: SetClearColor::FromLevelBackground,
             ..Default::default()
-        })
-        .add_systems(PreStartup, tilemap::pre_setup)
-        .add_systems(Update, tilemap::watcher)
-        .add_systems(Update, (tilemap::spawn_tile_collision, spawner_spawn_listener))
-        .add_systems(PostUpdate, trespassable_spawn_listener)
-        .register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner")
-        .register_ldtk_int_cell::<tilemap::TileObsticleBundle>(1)
-        .register_ldtk_int_cell::<TrespassableCellBundle>(2);
-        //.register_ldtk_int_cell::<components::LadderBundle>(2)
-        //.register_ldtk_int_cell::<components::WallBundle>(3)
-        //.register_ldtk_entity::<components::PlayerBundle>("Player")
-        //.register_ldtk_entity::<components::MobBundle>("Mob")
-        //.register_ldtk_entity::<components::PumpkinsBundle>("Pumpkins")
+        });
+        app.add_systems(PreStartup, tilemap::pre_setup);
+        app.add_systems(Update, tilemap::watcher);
+        app.add_systems(Update, (tilemap::spawn_tile_collision, spawner_spawn_listener));
+        app.add_systems(PostUpdate, trespassable_spawn_listener);
+
+        //app.register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner");
+
+        app.register_ldtk_int_cell::<tilemap::TileObsticleBundle>(1);
+        app.register_ldtk_int_cell::<tilemap::TileObsticleBundle>(3);
+        app.register_ldtk_int_cell::<tilemap::TileObsticleBundle>(4);
+
         app.insert_resource(TrespassableCells::default());
     }
 }

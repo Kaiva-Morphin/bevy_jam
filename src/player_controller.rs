@@ -73,22 +73,22 @@ fn setup(
 
         AnimationController::default(),
     )).with_children(|commands| {commands.spawn((
-        /*SpriteBundle{
+        SpriteBundle{
             texture: asset_server.load("vampire.png"),
             ..default()
         },
         TextureAtlas{
             layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 20), 7, 3, Some(uvec2(1, 1)), None)),
             index: 2
-        }*/
-        SpriteBundle{
+        }
+        /*SpriteBundle{
             texture: asset_server.load("hunter.png"),
             ..default()
         },
         TextureAtlas{
             layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(16, 20), 7, 3, Some(uvec2(1, 1)), None)),
             index: 2
-        }
+        }*/
     ));});
 
     let sprite_size = UVec2::new(48, 16);
