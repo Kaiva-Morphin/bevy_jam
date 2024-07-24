@@ -25,7 +25,7 @@ impl Plugin for TileMapPlugin {
         app.add_systems(Update, tilemap::spawn_tile_collision);
         app.add_systems(PostUpdate, trespassable_spawn_listener);
         app.add_systems(PreUpdate, sizif);
-        //app.register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner");
+        app.register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner");
 
         app.register_ldtk_int_cell::<tilemap::TileObsticleBundle>(1);
         app.register_ldtk_int_cell::<tilemap::TileObsticleBundle>(3);

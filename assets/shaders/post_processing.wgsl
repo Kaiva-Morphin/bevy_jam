@@ -125,6 +125,10 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 
 
 
+    //let colors = 48.;
+    //waved = waved * modulate * vec4(vec3(vignette), 1.0);
+    //waved = waved * colors;
+    //waved = vec4(floor(waved.x), floor(waved.y), floor(waved.z), colors) / colors;
     return waved * modulate * vec4(vec3(vignette), 1.0);
     //return waved;
     //return vec4(1., 1., 1., 1.) * col;

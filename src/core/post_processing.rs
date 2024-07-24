@@ -286,7 +286,7 @@ impl FromWorld for PostProcessPipeline {
 
 // This is the component that will get passed to the shader
 #[derive(Component, Clone, Copy, ExtractComponent, ShaderType)]
-#[derive(Default)]
+//#[derive(Default)]
 struct PostProcessUniform {
     time: f32,
     target_height: f32,
@@ -308,19 +308,24 @@ struct PostProcessUniform {
     //webgl2_padding: Vec3,
 }
 
-//impl Default for PostProcessUniform {
-//    fn default() -> Self {
-//        PostProcessUniform{
-//            //daytime: 0.,
-//            //day_color: vec4(1.5, 1.1, 0.6, 1.),
-//            //night_color: vec4(0.005, 0.01, 0.03, 1.),
-//
-//            //vignette_strength: 0.25,
-//            //wave_strength: 9.,
-//            ..default()
-//        }
-//    }
-//}
+impl Default for PostProcessUniform {
+    fn default() -> Self {
+        PostProcessUniform{
+            daytime: 0.,
+            day_color: vec4(1.5, 1.1, 0.6, 1.),
+            night_color: vec4(0.005, 0.01, 0.03, 1.),
+
+            vignette_strength: 0.25,
+            wave_strength: 9.,
+            time: 0.,
+            
+            target_height: 1.,
+            target_width: 1.,
+            height: 1.,
+            width: 1.,
+        }
+    }
+}
 
 fn late_setup(
     mut commands: Commands,

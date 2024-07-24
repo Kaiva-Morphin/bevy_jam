@@ -6292,7 +6292,24 @@
 					"seed": 2332768,
 					"overrideTilesetUid": null,
 					"gridTiles": [],
-					"entityInstances": []
+					"entityInstances": [
+						{
+							"__identifier": "EnemySpawner",
+							"__grid": [59,45],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#FF0000",
+							"iid": "17615e20-25d0-11ef-b95b-d14bb93e1100",
+							"width": 16,
+							"height": 16,
+							"defUid": 59,
+							"px": [944,720],
+							"fieldInstances": [],
+							"__worldX": -48,
+							"__worldY": 0
+						}
+					]
 				},
 				{
 					"__identifier": "StaticTrees",
