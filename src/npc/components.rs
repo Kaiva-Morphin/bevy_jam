@@ -34,6 +34,7 @@ pub enum NpcState {
     Attack,
     Escape,
     Chase,
+    Look,
     Chill,
     Dead,
 }
@@ -47,4 +48,9 @@ pub struct NpcsOnMap {
 #[derive(Component)]
 pub struct ChillTimer {
     pub timer: Timer
+}
+
+#[derive(Component)]
+pub struct PlayerLastPos {
+    pub pos: IVec2,
 }

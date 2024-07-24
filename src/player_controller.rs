@@ -1,7 +1,9 @@
-pub mod core;
-pub mod player;
-pub mod map;
-pub mod characters;
+mod core;
+mod player;
+mod npc;
+mod map;
+pub mod systems;
+mod characters;
 
 use crate::characters::animation::*;
 use core::camera::plugin::CameraFollow;

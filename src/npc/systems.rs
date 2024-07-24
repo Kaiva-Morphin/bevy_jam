@@ -13,6 +13,7 @@ use crate::{
 
 use super::{components::*, pathfinder};
 
+const SPOT_DIST: f32 = 200.0;
 const THRESHOLD: f32 = 100.0;
 const UPP_THRESHOLD: f32 = THRESHOLD * 2.0;
 const CIV_MAXSPEED: f32 = 40.0;
@@ -77,7 +78,7 @@ pub fn manage_civilians(
                     if civ_path.path.is_none() {
                         chill_timer.timer.tick(Duration::from_secs_f32(dt));
                         if chill_timer.timer.finished() {
-                            let end = civ_ipos + IVec2::new(rng.gen_range(0..4), rng.gen_range(0..4));
+                            let end = civ_ipos + IVec2::new(rng.gen_range(-4..4), rng.gen_range(-4..4));
                             if trespassable.is_tresspassable(&end) {
                                 civ_path.path = pathfinder(civ_ipos, end, &trespassable, &transformer, state);
                             }
@@ -166,6 +167,7 @@ pub fn spawn_hunter(
         NpcState::Chase,
         AnimationController::default(),
         ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
+        PlayerLastPos {pos: IVec2::ZERO},
     )).with_children(|commands| {commands.spawn((
         SpriteBundle{
             texture: asset_server.load("hunter.png"),
@@ -183,8 +185,8 @@ pub fn manage_hunters(
     asset_server: ResMut<AssetServer>,
     mut hunters_data: Query<(&Transform, &mut KinematicCharacterController,
         &mut NpcVelAccum, &mut NpcPath, &mut HunterTimer, &mut NpcState,
-        &mut ChillTimer, &mut AnimationController), Without<Player>>,
-    player_data: Query<(&Transform, &PlayerController), With<Player>>,
+        &mut ChillTimer, &mut AnimationController, &mut PlayerLastPos), Without<Player>>,
+    player_data: Query<(&Transform, &PlayerController, Entity), With<Player>>,
     transformer: Res<TransformToGrid>,
     trespassable: Res<TrespassableCells>,
     mut prev_player_ipos: Local<IVec2>,
@@ -196,16 +198,21 @@ pub fn manage_hunters(
     let player_pos = player_data.0.translation.xy();
     let player_ipos = transformer.from_world_i32(player_pos);
     let player_vel = player_data.1.accumulated_velocity;
+    let player_entity = player_data.2;
+    let mut player_in_sight = false;
     let dt = time.delta_seconds();
     for (hunter_transform, mut hunter_controller,
         mut vel_accum , mut hunter_path,
         mut hunter_timer, mut hunter_state, mut chill_timer,
-        mut animation_controller) in hunters_data.iter_mut() {
+        mut animation_controller, mut player_last_pos) in hunters_data.iter_mut() {
         let hunter_pos = hunter_transform.translation.xy();
         let hunter_ipos = transformer.from_world_i32(hunter_pos);
         let direction = player_pos - hunter_pos;
         let length = direction.length();
-        println!("{:?}", raycast(hunter_pos, direction / length, length, &rapier_context));
+        if let Some(last_seen_entity) = raycast(hunter_pos, direction / length, length, &rapier_context) {
+        if last_seen_entity == player_entity && length < SPOT_DIST{
+            player_in_sight = true;
+        }
         gizmos.line_2d(hunter_pos, player_pos, Color::Srgba(BLUE));
 
         match *hunter_state {
@@ -225,7 +232,8 @@ pub fn manage_hunters(
                         animation_controller.turn_down()
                     }
                 }
-                if hunter_timer.timer.finished() { // todo: shoot only if raycast
+                if player_in_sight {
+                if hunter_timer.timer.finished() {
                 animation_controller.play_hunter_throw();
                 if let Some(intercept) = calculate_intercept(hunter_pos, player_pos, player_vel, PROJ_V) {
                     let dir = intercept - hunter_pos;
@@ -261,28 +269,54 @@ pub fn manage_hunters(
             } else if dist < UPP_THRESHOLD {
                 *hunter_state = NpcState::Chase;
             }
+            } else {
+            *hunter_state = NpcState::Look;
+            player_last_pos.pos = player_ipos;
             }
-            NpcState::Chill => {
-
             }
             NpcState::Dead => {
 
             }
             state => {
                 if state == NpcState::Chill {
-                    if hunter_path.path.is_none() {
-                        let mut rng = thread_rng();
-                        chill_timer.timer.tick(Duration::from_secs_f32(dt));
-                        if chill_timer.timer.finished() {
-                            let end = hunter_ipos + IVec2::new(rng.gen_range(0..4), rng.gen_range(0..4));
-                            if trespassable.is_tresspassable(&end) {
-                                hunter_path.path = pathfinder(hunter_ipos, end, &trespassable, &transformer, state);
+                    if player_in_sight {
+                        *hunter_state = NpcState::Chase;
+                        // todo: add "!" anim
+                    } else {
+                        if hunter_path.path.is_none() {
+                            let mut rng = thread_rng();
+                            chill_timer.timer.tick(Duration::from_secs_f32(dt));
+                            if chill_timer.timer.finished() {
+                                let end = hunter_ipos + IVec2::new(rng.gen_range(-4..4), rng.gen_range(-4..4));
+                                if trespassable.is_tresspassable(&end) {
+                                    hunter_path.path = pathfinder(hunter_ipos, end, &trespassable, &transformer, state);
+                                }
                             }
                         }
                     }
-                } else {
-                    if player_ipos != *prev_player_ipos {
-                        hunter_path.path = pathfinder(hunter_ipos, player_ipos, &trespassable, &transformer, state);
+                } else if state == NpcState::Look {
+                    if player_in_sight {
+                        *hunter_state = NpcState::Chase;
+                        // todo: add "!" anim
+                    } else {
+                        hunter_path.path = pathfinder(hunter_ipos, player_last_pos.pos, &trespassable, &transformer, state);
+                        if hunter_path.path.is_none() {
+                            // todo: add "?" anim
+                            *hunter_state = NpcState::Chill;
+                        }
+                    }
+                    
+                } else { // chase & escape
+                    if player_in_sight {
+                        if player_ipos != *prev_player_ipos {
+                            hunter_path.path = pathfinder(hunter_ipos, player_ipos, &trespassable, &transformer, state);
+                        }
+                        if hunter_path.path.is_none() {
+                        *hunter_state = NpcState::Attack;
+                        }
+                    } else {
+                        *hunter_state = NpcState::Look;
+                        player_last_pos.pos = player_ipos;
                     }
                 }
                 
@@ -327,12 +361,10 @@ pub fn manage_hunters(
                         vel_accum.v = vel_accum.v.normalize() * HUNTER_MAXSPEED
                     }
                     hunter_controller.translation = Some(vel_accum.v * dt);
-                } else {
-                    *hunter_state = NpcState::Attack;
                 }
             }
         }
-        
+    }
     }
     *prev_player_ipos = player_ipos;
 }
@@ -412,7 +444,7 @@ pub fn entity_spawner(
                     npcs_on_map.civilians += 1;
                 }
             } else {
-                if npcs_on_map.hunters < 1 {
+                if npcs_on_map.hunters < 10 {
                     spawn_hunter(&mut commands, &mut asset_server, spawner_pos);
                     npcs_on_map.hunters += 1;
                 }
