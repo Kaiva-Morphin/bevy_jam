@@ -91,6 +91,7 @@ fn trespassable_spawn_listener(
         let cells_column = vec![true; transfromer.grid_size.y as usize];
         let mut cells_grid = vec![cells_column; transfromer.grid_size.x as usize];
         
+        
         for coords in entity_q.iter(){
             let pos = ivec2(coords.x, transfromer.grid_size.y - coords.y - 1);
             cells_grid[pos.x as usize][pos.y as usize] = false;

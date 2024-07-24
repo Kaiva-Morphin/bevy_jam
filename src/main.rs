@@ -1,10 +1,10 @@
-mod core;
-mod player;
-mod npc;
-mod map;
+pub mod core;
+pub mod player;
+pub mod npc;
+pub mod map;
 pub mod systems;
-mod characters;
-
+pub mod characters;
+use crate::player::components::Player;
 use core::camera::plugin::EnhancedCameraPlugin;
 use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
 use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;

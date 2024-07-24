@@ -46,7 +46,23 @@ struct PostProcessUniform {
 @group(0) @binding(2) var<uniform> settings: PostProcessUniform;
 
 
+fn oklab_to_rgb(c: vec3) -> vec3
+{
+    //c.yz *= c.x;
+    var l_ = c.x + 0.3963377774f * c.y + 0.2158037573f * c.z;
+    var m_ = c.x - 0.1055613458f * c.y - 0.0638541728f * c.z;
+    var s_ = c.x - 0.0894841775f * c.y - 1.2914855480f * c.z;
 
+    var l = l_*l_*l_;
+    var m = m_*m_*m_;
+    var s = s_*s_*s_;
+
+    var rgbResult;
+    rgbResult.r =   4.0767245293*l - 3.3072168827*m + 0.2307590544*s;
+    rgbResult.g = - 1.2681437731*l + 2.6093323231*m - 0.3411344290*s;
+    rgbResult.b = - 0.0041119885*l - 0.7034763098*m + 1.7068625689*s;
+    return rgbResult;
+}
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
