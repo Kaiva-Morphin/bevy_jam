@@ -66,6 +66,15 @@ pub struct TrespassableCells{
     pub ready: bool
 }
 
+impl TrespassableCells {
+    pub fn is_trespassable(&self, pos: &IVec2) -> bool{
+        let Some(column) = self.cells.get(pos.x as usize) else {return false};
+        let Some(value) = column.get(pos.y as usize) else {return false};
+        *value
+    }
+}
+
+
 fn update_unit_grid(
     mut trespassable: ResMut<TrespassableCells>,
     transfromer: Res<TransformToGrid>,

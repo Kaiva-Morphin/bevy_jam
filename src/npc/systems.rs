@@ -79,7 +79,7 @@ pub fn manage_civilians(
                         chill_timer.timer.tick(Duration::from_secs_f32(dt));
                         if chill_timer.timer.finished() {
                             let end = civ_ipos + IVec2::new(rng.gen_range(-4..4), rng.gen_range(-4..4));
-                            if trespassable.is_tresspassable(&end) {
+                            if trespassable.is_trespassable(&end) {
                                 civ_path.path = pathfinder(civ_ipos, end, &trespassable, &transformer, state);
                             }
                         }
