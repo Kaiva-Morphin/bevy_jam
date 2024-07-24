@@ -15,12 +15,18 @@ const MOVES: [IVec2; 4] = [
 ];
 
 impl Pos {
-    fn successors(&self, trespassable: &HashSet<IVec2>) -> impl Iterator<Item = (Pos, i32)> {
+    fn successors(&self, trespassable: &Vec<Vec<bool>>) -> impl Iterator<Item = (Pos, i32)> {
+        let is_trasspassable = |pos: &IVec2| -> bool {
+            let Some(column) = trespassable.get(pos.x as usize) else {return false};
+            let Some(value) = column.get(pos.y as usize) else {return false};
+            *value
+        };
+
         let &Pos(pos) = self;
         let mut moves = Vec::with_capacity(4);
         for mov in MOVES {
             let t = pos + mov;
-            if trespassable.contains(&t) {
+            if is_trasspassable(&t) {
                 moves.push(t)
             }
         }
@@ -28,7 +34,7 @@ impl Pos {
         for i in 0..moves.len() {
             for j in i + 1..moves.len() {
                 let hardmove = moves[i] + moves[j] - pos;
-                if trespassable.contains(&hardmove) {
+                if is_trasspassable(&hardmove) {
                     hardmoves.insert(hardmove);
                 }
             }

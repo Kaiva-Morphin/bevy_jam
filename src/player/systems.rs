@@ -26,20 +26,6 @@ impl Default for PlayerController {
     }
 }
 
-#[derive(Default, Debug)]
-pub enum Direction {
-    Up,
-    Right,
-    #[default]
-    Down,
-    Left
-}
-
-#[derive(Component, Default)]
-pub struct PlayerAnimationState{
-    pub dir: Direction
-}
-
 pub fn spawn_player(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>

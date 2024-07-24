@@ -1,9 +1,9 @@
-use std::time::Duration;
+use std::{time::Duration, vec};
 
 use bevy::{math::ivec2, prelude::*, utils::HashSet};
 use bevy_ecs_ldtk::prelude::*;
 
-use super::tilemap::{self, TransformToGrid};
+use super::tilemap::{self, TileObsticle, TransformToGrid};
 
 pub struct TileMapPlugin;
 
@@ -22,7 +22,7 @@ impl Plugin for TileMapPlugin {
         });
         app.add_systems(PreStartup, tilemap::pre_setup);
         app.add_systems(Update, tilemap::watcher);
-        app.add_systems(Update, (tilemap::spawn_tile_collision, spawner_spawn_listener));
+        app.add_systems(Update, tilemap::spawn_tile_collision);
         app.add_systems(PostUpdate, trespassable_spawn_listener);
         app.add_systems(PreUpdate, sizif);
         //app.register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner");
@@ -58,25 +58,40 @@ pub struct EntitySpawnerBundle {
 
 #[derive(Resource, Default)]
 pub struct TrespassableCells{
-    pub cells: HashSet<IVec2>,
+    pub cells: Vec<Vec<bool>>,
     pub ready: bool
+}
+
+impl TrespassableCells {
+    pub fn is_tresspassable(&self, pos: &IVec2) -> bool{
+        let Some(column) = self.cells.get(pos.x as usize) else {return false};
+        let Some(value) = column.get(pos.y as usize) else {return false};
+        *value
+    }
 }
 
 fn trespassable_spawn_listener(
     //mut commands: Commands,
-    entity_q: Query<&GridCoords, Added<TrespassableCell>>,
-    mut cells: ResMut<TrespassableCells>,
+    entity_q: Query<&GridCoords, Added<TileObsticle>>,
+    mut trespassable_cells: ResMut<TrespassableCells>,
     transfromer: Res<TransformToGrid>,
     //level_query: Query<(Entity, &LevelIid)>,
     //ldtk_projects: Query<&Handle<LdtkProject>>,
     //ldtk_project_assets: Res<Assets<LdtkProject>>,
 ){
     if !entity_q.is_empty() && transfromer.ready {
+        let cells_column = vec![true; transfromer.grid_size.y as usize];
+
+        let mut cells_grid = vec![cells_column; transfromer.grid_size.x as usize];
+
         for coords in entity_q.iter(){
-            cells.cells.insert(ivec2(coords.x, transfromer.grid_size.y - coords.y - 1));
+            let pos = ivec2(coords.x, transfromer.grid_size.y - coords.y - 1);
+            cells_grid[pos.x as usize][pos.y as usize] = false;
         }
-        println!("ADDED! {} cells", cells.cells.len());
-        cells.ready = true;
+
+        trespassable_cells.cells = cells_grid;
+        info!("Trespassable cells inited!");
+        trespassable_cells.ready = true;
     }
 }
 

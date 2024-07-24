@@ -2,7 +2,7 @@ pub mod plugin{
 
 use std::{cell::RefCell, default, sync::Mutex};
 
-use bevy::{core_pipeline::{bloom::{BloomCompositeMode, BloomPrefilterSettings, BloomSettings}, tonemapping::{DebandDither, Tonemapping}}, input::mouse::MouseWheel, prelude::*, render::camera::ScalingMode};
+use bevy::{core_pipeline::{bloom::{BloomCompositeMode, BloomPrefilterSettings, BloomSettings}, motion_blur::{MotionBlur, MotionBlurBundle}, tonemapping::{DebandDither, Tonemapping}}, input::mouse::MouseWheel, prelude::*, render::camera::ScalingMode};
 use bevy_inspector_egui::egui::mutex::RwLock;
 
 use crate::core::functions::ExpDecay;
@@ -81,6 +81,16 @@ fn setup_camera(
             composite_mode: BloomCompositeMode::Additive
         },
         CameraController{scale: 1., ..default()},
+        
+        MotionBlurBundle {
+            motion_blur: MotionBlur {
+                shutter_angle: 1.0,
+                samples: 2,
+                #[cfg(all(feature = "webgl2", target_arch = "wasm32", not(feature = "webgpu")))]
+                _webgl2_padding: Default::default(),
+            },
+            ..default()
+        },
     ));
 }
 

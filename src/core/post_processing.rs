@@ -21,6 +21,7 @@ use bevy::{
         }, renderer::{RenderContext, RenderDevice}, texture::BevyDefault, view::ViewTarget, RenderApp
     }, window::WindowResized
 };
+use bevy_inspector_egui::{bevy_egui::EguiContexts, egui::{self, Slider}};
 
 use super::camera::plugin::MainCamera;
 
@@ -46,7 +47,7 @@ impl Plugin for PostProcessPlugin {
             UniformComponentPlugin::<PostProcessUniform>::default(),
         ));
         app.add_systems(PostStartup, late_setup);
-        app.add_systems(Update, (rotate, update_settings, on_resize_system));
+        app.add_systems(Update, (update_settings, on_resize_system));
 
         // We need to get the render app from the main app
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
@@ -285,6 +286,7 @@ impl FromWorld for PostProcessPipeline {
 
 // This is the component that will get passed to the shader
 #[derive(Component, Clone, Copy, ExtractComponent, ShaderType)]
+#[derive(Default)]
 struct PostProcessUniform {
     time: f32,
     target_height: f32,
@@ -293,6 +295,7 @@ struct PostProcessUniform {
     width: f32,
 
     daytime: f32,
+    
     day_color: Vec4,
     night_color: Vec4,
 
@@ -305,19 +308,19 @@ struct PostProcessUniform {
     //webgl2_padding: Vec3,
 }
 
-impl Default for PostProcessUniform {
-    fn default() -> Self {
-        PostProcessUniform{
-            daytime: 0.,
-            day_color: vec4(1.5, 1.1, 0.6, 1.),
-            night_color: vec4(0.005, 0.01, 0.03, 1.),
-
-            vignette_strength: 0.25,
-            wave_strength: 9.,
-            ..default()
-        }
-    }
-}
+//impl Default for PostProcessUniform {
+//    fn default() -> Self {
+//        PostProcessUniform{
+//            //daytime: 0.,
+//            //day_color: vec4(1.5, 1.1, 0.6, 1.),
+//            //night_color: vec4(0.005, 0.01, 0.03, 1.),
+//
+//            //vignette_strength: 0.25,
+//            //wave_strength: 9.,
+//            ..default()
+//        }
+//    }
+//}
 
 fn late_setup(
     mut commands: Commands,
@@ -332,26 +335,46 @@ fn late_setup(
             target_width: w,
             height: h,
             width: w,
+            daytime: 0.,
+            day_color: vec4(1.5, 1.1, 0.6, 1.),
+            night_color: vec4(0.005, 0.01, 0.03, 1.),
+        
+            vignette_strength: 0.25,
+            wave_strength: 12.,
             ..default()
         }
     );
 }
 
-#[derive(Component)]
-struct Rotates;
 
-/// Rotates any entity around the x and y axis
-fn rotate(time: Res<Time>, mut query: Query<&mut Transform, With<Rotates>>) {
-    for mut transform in &mut query {
-        transform.rotate_x(0.55 * time.delta_seconds());
-        transform.rotate_z(0.15 * time.delta_seconds());
-    }
-}
 
-fn update_settings(mut settings: Query<&mut PostProcessUniform>, time: Res<Time>) {
-    for mut setting in &mut settings {
-        setting.time = time.elapsed_seconds();
-    }
+fn update_settings(
+    mut settings: Query<&mut PostProcessUniform>, 
+    time: Res<Time>,
+    mut egui_context: EguiContexts,
+    
+) {
+    let mut settings = settings.single_mut();
+    let ctx = egui_context.ctx_mut();
+    egui::Window::new("POSTFX").show(ctx, |ui|{
+        ui.add(Slider::new(&mut settings.daytime, 0. ..= 1.).text("DAYTIME"));
+        ui.add(Slider::new(&mut settings.vignette_strength, 0. ..= 15.).text("VIGNETTE"));
+        ui.add(Slider::new(&mut settings.wave_strength, 0. ..= 100.).text("WAVE"));
+        ui.collapsing("COLORS", |ui|{
+            let mut rgb_night = settings.night_color.xyz().to_array();
+            let mut rgb_day = settings.day_color.xyz().to_array();
+            
+            ui.label("DAY COLOR");
+            ui.color_edit_button_rgb(&mut rgb_day);
+            ui.separator();
+            ui.label("NIGHT COLOR");
+            ui.color_edit_button_rgb(&mut rgb_night);
+            
+            settings.night_color = Vec3::from_array(rgb_night).extend(1.);
+            settings.day_color = Vec3::from_array(rgb_day).extend(1.);
+        });
+    });
+    settings.time = time.elapsed_seconds();
 }
 
 fn on_resize_system(

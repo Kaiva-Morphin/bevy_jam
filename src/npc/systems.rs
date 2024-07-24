@@ -78,7 +78,7 @@ pub fn manage_civilians(
                         chill_timer.timer.tick(Duration::from_secs_f32(dt));
                         if chill_timer.timer.finished() {
                             let end = civ_ipos + IVec2::new(rng.gen_range(0..4), rng.gen_range(0..4));
-                            if trespassable.cells.contains(&end) {
+                            if trespassable.is_tresspassable(&end) {
                                 civ_path.path = pathfinder(civ_ipos, end, &trespassable, &transformer, state);
                             }
                         }
@@ -275,7 +275,7 @@ pub fn manage_hunters(
                         chill_timer.timer.tick(Duration::from_secs_f32(dt));
                         if chill_timer.timer.finished() {
                             let end = hunter_ipos + IVec2::new(rng.gen_range(0..4), rng.gen_range(0..4));
-                            if trespassable.cells.contains(&end) {
+                            if trespassable.is_tresspassable(&end) {
                                 hunter_path.path = pathfinder(hunter_ipos, end, &trespassable, &transformer, state);
                             }
                         }

@@ -30,8 +30,8 @@ struct PostProcessUniform {
     width: f32,
 
     daytime: f32,
-    day_color: vec4,
-    night_color: vec4,
+    day_color: vec4<f32>,
+    night_color: vec4<f32>,
 
     vignette_strength: f32,
 
@@ -94,7 +94,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 
 
     let centered_uv = (in.uv - 0.5) * (settings.width/settings.height) * 2.0;
-    let rf = sqrt(dot(centered_uv, centered_uv)) * 0.5;
+    let rf = sqrt(dot(centered_uv, centered_uv)) * settings.vignette_strength;
     let rf2_1 = rf * rf + 1.0;
     let vignette = 1.0 / (rf2_1 * rf2_1 * rf2_1);
     //return col * vec4(vec3(vignette), 1.0);
@@ -105,11 +105,13 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     //if (round(px_coords.x) + round(px_coords.y)) % 2 == 0 {col = col * 0.2;}
     let day = vec4(1.5, 1.1, 0.6, 1.);
     let night = vec4(0.005, 0.01, 0.03, 1.);
+
+
     var sign = 1.;
-    var daytime = time * 0.1;
+    var daytime = settings.daytime;
     if sin(daytime) < 0. {sign = -1.;}
     daytime = (sqrt(abs(sin(daytime)))) * sign * 0.5 + 0.5;
-    let modulate = mix(day, night, daytime);
+    let modulate = mix(settings.day_color, settings.night_color, settings.daytime);
 
 
 
@@ -123,7 +125,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 
 
 
-    return col * day;
+    return waved * modulate * vec4(vec3(vignette), 1.0);
     //return waved;
     //return vec4(1., 1., 1., 1.) * col;
 }
