@@ -288,7 +288,7 @@ pub fn manage_hunters(
                             chill_timer.timer.tick(Duration::from_secs_f32(dt));
                             if chill_timer.timer.finished() {
                                 let end = hunter_ipos + IVec2::new(rng.gen_range(-4..4), rng.gen_range(-4..4));
-                                if trespassable.is_tresspassable(&end) {
+                                if trespassable.is_trespassable(&end) {
                                     hunter_path.path = pathfinder(hunter_ipos, end, &trespassable, &transformer, state);
                                 }
                             }
