@@ -116,7 +116,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 
 
     let pix_uv = vec2(floor(in.uv.y * (th * 0.5)) / (th * 0.5), floor(in.uv.x * (tw * 0.5)) / (tw * 0.5));
-    let wave = sin(time + pix_uv * vec2(10., 30.)) * settings.wave_strength * 0.001;
+    let wave = sin(time + pix_uv * vec2(10., 30.)) * settings.wave_strength * 0.0001;
     let waved_pos = in.uv + wave;
     var waved = textureSample(screen_texture, texture_sampler, waved_pos);
     if waved_pos.x < 0. || waved_pos.x > 1. {
