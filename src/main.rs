@@ -8,6 +8,7 @@ use crate::player::components::Player;
 use core::camera::plugin::EnhancedCameraPlugin;
 use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
 use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
+use std::time::Duration;
 
 use bevy::prelude::*;
 
@@ -16,6 +17,7 @@ use map::plugin::TileMapPlugin;
 use npc::NPCPlugin;
 use player::PlayerPlugin;
 use systems::*;
+
 fn main() {
     let mut app = App::new();
     app
@@ -25,7 +27,13 @@ fn main() {
         ScreenDiagnosticsPlugin,
         TileMapPlugin,
     ))
-    .insert_resource(DayCycle {time: 0., is_day: true})
+    .insert_resource(DayCycle {
+        cycle_timer: Timer::new(Duration::from_secs_f32(DAY_DURATION), TimerMode::Repeating),
+        translation_timer: Timer::new(Duration::from_secs_f32(TRANSLATION_DURATION), TimerMode::Repeating),
+        daytime: 0.,
+        is_night: true,
+        is_translating: false,
+    })
     .add_plugins((
         PlayerPlugin,
         NPCPlugin,
