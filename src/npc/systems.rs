@@ -182,6 +182,7 @@ pub fn manage_civilians(
     }
 }
 
+
 pub fn spawn_hunter(
     commands: &mut Commands,
     asset_server: &mut ResMut<AssetServer>,

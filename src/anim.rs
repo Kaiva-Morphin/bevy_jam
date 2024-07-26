@@ -11,13 +11,14 @@ use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
 use core::despawn_lifetime::DespawnTimer;
 use core::functions::TextureAtlasLayoutHandles;
 use crate::characters::animation::CivilianAnims;
-use bevy::math::vec3;
+use bevy::math::{vec2, vec3};
 use bevy::prelude::*;
 
 use bevy_easings::{Ease, EaseFunction, EasingType};
 use characters::animation::{spawn_civilian_animation_bundle, spawn_player_animation_bundle, AnimationController};
 use characters::plugin::CharacterAnimationPlugin;
-use stuff::emotion_bundle;
+use stuff::*;
+use systems::GameState;
 
 fn main() {
     let mut app = App::new();
@@ -30,7 +31,8 @@ fn main() {
     .add_plugins((
         CharacterAnimationPlugin,
     ));
-    app.add_systems(PreUpdate, update);
+    app.insert_state(GameState::InGame);
+    app.add_systems(PreUpdate, (update, simple_anim_update));
     app.add_systems(Startup, setup);
     app.run();
 }
@@ -103,7 +105,7 @@ fn update(
             .with_children(|commands| {
                 commands.spawn((
                     Name::new("Particle"),
-                    emotion_bundle(&asset_server, 0),
+                    emotion_bundle(&asset_server, &mut layout_handles, 0),
                     Transform::from_translation(vec3(0., 0., 0.))
                         .ease_to(
                             Transform::from_translation(vec3(0., 5., 0.)),
@@ -112,6 +114,26 @@ fn update(
                                 duration: std::time::Duration::from_secs(1),
                             },
                         )
+                ));
+            });
+        }
+
+        if keyboard.just_pressed(KeyCode::Digit6){
+            let max_offset = 7.;
+            let start = vec3(
+                rand::random::<f32>() * max_offset - max_offset * 2.,
+                rand::random::<f32>() * max_offset - max_offset * 2.,
+                0.
+            );
+            commands.spawn((
+                TransformBundle::default(),
+                VisibilityBundle::default(),
+                DespawnTimer::seconds(5.),
+            ))
+            .insert(Transform::from_translation(vec3(-20., 0., 0.) + start))
+            .with_children(|commands| {
+                commands.spawn((
+                    stake_bundle(&asset_server, &mut layout_handles, vec2(1., 0.))
                 ));
             });
         }
