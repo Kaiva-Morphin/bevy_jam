@@ -36,9 +36,11 @@ pub fn spawn_civilian(
     )).id();
     commands.entity(entity).insert((
         TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
-        RigidBody::KinematicPositionBased,
+        RigidBody::Dynamic,
+        Velocity::zero(),
         Civilian,
         ActiveCollisionTypes::all(),
+        LockedAxes::ROTATION_LOCKED_Z,
         ActiveEvents::COLLISION_EVENTS,
         Sensor,
         Collider::ball(4.5),
@@ -48,7 +50,6 @@ pub fn spawn_civilian(
         ),
         NpcVelAccum {v: Vec2::ZERO},
         NpcPath {path: None},
-        KinematicCharacterController::default(),
         NpcState::Chill,
         ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
         AttackTimer {timer: Timer::new(Duration::from_secs_f32(0.5), TimerMode::Repeating)},
@@ -56,7 +57,7 @@ pub fn spawn_civilian(
 }
 
 pub fn manage_civilians(
-    mut civilians_data: Query<(&Transform, &mut KinematicCharacterController, &mut NpcVelAccum, &mut NpcPath, &mut NpcState,
+    mut civilians_data: Query<(&Transform, &mut Velocity, &mut NpcVelAccum, &mut NpcPath, &mut NpcState,
         &mut ChillTimer, &mut AnimationController, &mut AttackTimer), With<Civilian>>,
     mut player_data: Query<(&Transform, Entity, &mut Player)>,
     time: Res<Time>,
@@ -193,7 +194,7 @@ pub fn manage_civilians(
                     if vel_accum.v.length() > CIV_MAXSPEED {
                         vel_accum.v = vel_accum.v.normalize() * CIV_MAXSPEED
                     }
-                    civ_controller.translation = Some(vel_accum.v * dt);
+                    civ_controller.linvel = vel_accum.v;
                     }
                 } else {
                     if civ_pos.distance(player_pos) > THRESHOLD {
@@ -225,15 +226,16 @@ pub fn spawn_hunter(
     commands.spawn((
         (
             Name::new("Hunter"),
-            RigidBody::KinematicPositionBased,
+            RigidBody::Dynamic,
             TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
             VisibilityBundle::default(),
             Collider::ball(4.5)
         ),
         Hunter,
+        LockedAxes::ROTATION_LOCKED_Z,
         NpcVelAccum {v: Vec2::ZERO},
         NpcPath {path: None},
-        KinematicCharacterController::default(),
+        Velocity::zero(),
         (CollisionGroups::new(
             Group::from_bits(LAT_CG).unwrap(),
             Group::from_bits(PLAYER_CG).unwrap()
@@ -264,7 +266,7 @@ pub fn spawn_hunter(
 pub fn manage_hunters( // todo: desync throw anim
     mut commands: Commands,
     asset_server: ResMut<AssetServer>,
-    mut hunters_data: Query<(&Transform, &mut KinematicCharacterController,
+    mut hunters_data: Query<(&Transform, &mut Velocity,
         &mut NpcVelAccum, &mut NpcPath, &mut HunterTimer, &mut NpcState,
         &mut ChillTimer, &mut AnimationController, &mut PlayerLastPos), Without<Player>>,
     player_data: Query<(&Transform, &PlayerController, Entity), With<Player>>,
@@ -284,6 +286,7 @@ pub fn manage_hunters( // todo: desync throw anim
         mut vel_accum , mut hunter_path,
         mut hunter_timer, mut hunter_state, mut chill_timer,
         mut animation_controller, mut player_last_pos) in hunters_data.iter_mut() {
+        hunter_controller.linvel = Vec2::ZERO;
         let hunter_pos = hunter_transform.translation.xy();
         let hunter_ipos = transformer.from_world_i32(hunter_pos);
         let direction = player_pos - hunter_pos;
@@ -439,7 +442,7 @@ pub fn manage_hunters( // todo: desync throw anim
                     if vel_accum.v.length() > HUNTER_MAXSPEED {
                         vel_accum.v = vel_accum.v.normalize() * HUNTER_MAXSPEED
                     }
-                    hunter_controller.translation = Some(vel_accum.v * dt);
+                    hunter_controller.linvel = vel_accum.v;
                 }
             }
         }

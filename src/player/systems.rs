@@ -9,7 +9,6 @@ use crate::systems::DayCycle;
 use bevy::math::{uvec2, vec2};
 use bevy_inspector_egui::bevy_egui::EguiContexts;
 use bevy_inspector_egui::egui::{self, Slider};
-use bevy_rapier2d::control::KinematicCharacterController;
 use pathfinding::num_traits::Signed;
 
 use super::components::*;
@@ -53,14 +52,15 @@ pub fn spawn_player(
         TransformBundle::from_transform(Transform::from_xyz(16., 16., 0.)),
         Name::new("Player"),
         CameraFollow{order: 0, speed: 10.},
-        KinematicCharacterController::default(),
-        PlayerController::default(),
         Player {hp: 100, xp: 0, score: 0, max_speed: 80., accumulation_grain: 600.},
         AnimationController::default(),
-        RigidBody::KinematicPositionBased,
+        RigidBody::Dynamic,
+        LockedAxes::ROTATION_LOCKED_Z,
         Collider::ball(4.),
         ActiveCollisionTypes::all(),
         ActiveEvents::COLLISION_EVENTS,
+        Velocity::zero(),
+        PlayerController::default(),
         CollisionGroups::new(
             Group::from_bits(PLAYER_CG).unwrap(),
             Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG | LAT_CG).unwrap()
@@ -81,7 +81,7 @@ pub fn spawn_player(
 
 pub fn player_controller(
     mut commands: Commands,
-    mut player_q: Query<(&mut KinematicCharacterController, &mut PlayerController,
+    mut player_q: Query<(&mut Velocity, &mut PlayerController,
         &mut AnimationController, &mut DashTimer, &mut Player, Entity)>,
     keyboard: Res<ButtonInput<KeyCode>>,
     day_cycle: Res<DayCycle>,
@@ -91,6 +91,7 @@ pub fn player_controller(
     let (mut character_controller, mut controller,
         mut animation_controller, mut dash_timer,
         mut player, player_entity) = player_q.single_mut();
+    character_controller.linvel = Vec2::ZERO;
     let dt = time.delta_seconds();
     if dash_timer.timer.elapsed_secs() == 0. {
         let input_dir = vec2(
@@ -100,7 +101,7 @@ pub fn player_controller(
         
         controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * player.max_speed, dt * player.accumulation_grain);
         if controller.accumulated_velocity.length() > player.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * player.max_speed}
-        character_controller.translation = Some(controller.accumulated_velocity * dt);
+        character_controller.linvel = controller.accumulated_velocity;
     
         if input_dir.x.abs() < 0.1 { // x axis is priotirized 
             if input_dir.y.abs() > 0.1 {
@@ -145,7 +146,7 @@ pub fn player_controller(
 
         controller.accumulated_velocity = controller.accumulated_velocity.move_towards(dash_dir.normalize_or_zero() * new_max, dt * new_gain);
         if controller.accumulated_velocity.length() > new_max {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * new_max}
-        character_controller.translation = Some(controller.accumulated_velocity * dt);
+        character_controller.linvel = controller.accumulated_velocity;
         
         if dash_timer.timer.finished() {
             dash_timer.timer.set_elapsed(Duration::from_secs_f32(0.));

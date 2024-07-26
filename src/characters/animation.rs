@@ -162,18 +162,21 @@ impl PartType {
 pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: &Res<AssetServer>, layout_handles: &mut ResMut<TextureAtlasLayoutHandles>) -> Entity {
     let body_variant = rand::thread_rng().gen_range(0..BODY_COUNT);
     let outfit_variant = rand::thread_rng().gen_range(0..OUTFIT_COUNT);
-    let eye_variant = rand::thread_rng().gen_range(0..EYE_PUB_COUNT);
+    let eye_variant = 0;
     let hair_variant = rand::thread_rng().gen_range(0..HAIR_COUNT);
     let weapon_variant = rand::thread_rng().gen_range(0..WEAPON_COUNT);
 
     let main_color = rand::thread_rng().gen::<f32>() * 0.5 + 0.5;
-    let second_color = rand::thread_rng().gen::<f32>() * 0.25;
+    let second_color = rand::thread_rng().gen::<f32>() * 0.5;
+    let third_color = rand::thread_rng().gen::<f32>() * 0.2;
+
     let main_idx = rand::thread_rng().gen_range(0..=2);
     let second_idx = rand::thread_rng().gen_range(0..=2);
+    let third_idx = rand::thread_rng().gen_range(0..=2);
     let mut eye_color = [0.; 3];
     eye_color[main_idx] = main_color;
     eye_color[second_idx] = (eye_color[second_idx] + second_color).clamp(0., 1.); 
-    let eye_color = Color::srgb_from_array([1., 1., 1.]); // todo!
+    eye_color[third_idx] = (eye_color[third_idx] + third_color).clamp(0., 1.); 
     commands.spawn((
         AnimationController{
             dir_offset: 4 * BODY_COUNT,
@@ -233,10 +236,23 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: &R
         )).insert(Transform::from_translation(vec3(0., 0., ARMS_Z)));
         commands.spawn((
             Name::new("Eyes"),
-            PartType::Eyes{variant: eye_variant, variants: EYE_COUNT},
+            PartType::Eyes{variant: 0, variants: EYE_COUNT},
+            SpriteBundle{
+                    texture: asset_server.load("civilian/eyes.png"),
+                    ..default()
+                },
+                TextureAtlas{
+                    layout: layout_handles.add_or_load(&asset_server, "Eyes", TextureAtlasLayout::from_grid(uvec2(8, 4), EYE_COUNT as u32, 3, Some(uvec2(1, 1)), None)),
+                    index: 0
+                },
+        )).insert(Transform::from_translation(vec3(0., 0., EYES_Z)));
+
+        commands.spawn((
+            Name::new("EyesColor"),
+            PartType::Eyes{variant: 1, variants: EYE_COUNT},
             SpriteBundle{
                     sprite: Sprite{
-                        color: eye_color,
+                        color: Color::srgb_from_array(eye_color),
                         ..default()
                     },
                     texture: asset_server.load("civilian/eyes.png"),
@@ -244,9 +260,10 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: &R
                 },
                 TextureAtlas{
                     layout: layout_handles.add_or_load(&asset_server, "Eyes", TextureAtlasLayout::from_grid(uvec2(8, 4), EYE_COUNT as u32, 3, Some(uvec2(1, 1)), None)),
-                    index: eye_variant
+                    index: 1
                 },
         )).insert(Transform::from_translation(vec3(0., 0., EYES_Z)));
+
         commands.spawn((
             Name::new("Hair"),
             PartType::Hair{variant: hair_variant, variants: HAIR_COUNT},
@@ -317,7 +334,8 @@ impl AnimTicker{
 
 
 pub trait PlayerAnims{
-
+    fn take_umbrella(&mut self){}
+    fn drop_umbrella(&mut self){}
 }
 
 pub trait HunterAnims{
@@ -327,6 +345,7 @@ pub trait HunterAnims{
 pub trait CivilianAnims{
     fn play_civil_attack(&mut self){}
 }
+
 
 impl CivilianAnims for AnimationController{
     fn play_civil_attack(&mut self) {
@@ -448,7 +467,7 @@ impl AnimationController{
     pub fn get_eyes_idx(&self, offset: usize, variant: usize) -> usize {
         let Some(idx) = self.ticker.get(&self.current_animation.frame_time, &self.current_animation.frame_idx) else {panic!("Failed to get idx! Probably anim is empty")};
         if idx == IDX_HURT {
-            return 5
+            return 4 + variant
         }
         let mut d = self.direction;
         if self.direction == 3 {d = 1}
