@@ -8,7 +8,7 @@ use rand::{thread_rng, Rng};
 use crate::{
     characters::animation::*,
     map::{plugin::{EntitySpawner, TrespassableCells}, tilemap::TransformToGrid},
-    player::{components::Player, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}},
+    player::{components::Player, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, systems::DayCycle,
 };
 
 use super::{components::*, pathfinder};
@@ -53,14 +53,16 @@ pub fn spawn_civilian(
 pub fn manage_civilians(
     mut civilians_data: Query<(&Transform, &mut KinematicCharacterController,
         &mut NpcVelAccum, &mut NpcPath, &mut NpcState, &mut ChillTimer), With<Civilian>>,
-    player_transform: Query<&Transform, With<Player>>,
+    player_data: Query<(&Transform, Entity), With<Player>>,
     time: Res<Time>,
+    day_cycle: Res<DayCycle>,
     transformer: Res<TransformToGrid>,
     trespassable: Res<TrespassableCells>,
     mut gizmos: Gizmos,
-    mut prev_player_ipos: Local<IVec2>,
+    rapier_context: Res<RapierContext>,
 ) {
-    let player_pos = player_transform.single().translation.xy();
+    let (player_transform, player_entity) = player_data.single();
+    let player_pos = player_transform.translation.xy();
     let player_ipos = transformer.from_world_i32(player_pos);
     let dt = time.delta_seconds();
     let mut rng = thread_rng();
@@ -69,25 +71,58 @@ pub fn manage_civilians(
         mut civ_state, mut chill_timer) in civilians_data.iter_mut() {
         let civ_pos = civ_transform.translation.xy();
         let civ_ipos = transformer.from_world_i32(civ_pos);
+        let direction = player_pos - civ_pos;
+        let length = direction.length();
+        let mut player_in_sight = false;
+        if let Some(last_seen_entity) = raycast(civ_pos, direction / length, length, &rapier_context) {
+        if last_seen_entity == player_entity && length < SPOT_DIST {
+            player_in_sight = true;
+        }
+        println!("{:?}", civ_state);
         match *civ_state {
-            NpcState::Attack => todo!(),
+            NpcState::Look => {},
             NpcState::Dead => todo!(),
-            NpcState::Chase => todo!(),
-            state => {
+            NpcState::Attack => {
+                // todo: play attack anim
+                *civ_state = NpcState::Chase;
+            },
+            state => { // esc cha chi
                 if state == NpcState::Chill {
                     if civ_path.path.is_none() {
                         chill_timer.timer.tick(Duration::from_secs_f32(dt));
                         if chill_timer.timer.finished() {
                             let end = civ_ipos + IVec2::new(rng.gen_range(-4..4), rng.gen_range(-4..4));
                             if trespassable.is_trespassable(&end) {
-                                civ_path.path = pathfinder(civ_ipos, end, &trespassable, &transformer, state);
+                                civ_path.path = pathfinder(civ_ipos, end, &trespassable, &transformer, state, false);
                             }
                         }
                     }
-                } else {
-                    if player_ipos != *prev_player_ipos {
-                        civ_path.path = pathfinder(civ_ipos, player_ipos, &trespassable, &transformer, state);
+                    if player_in_sight {
+                        if day_cycle.is_night {
+                            // todo: play "!" anim
+                            *civ_state = NpcState::Escape;
+                        } else {
+                            // todo: play "!" anim
+                            *civ_state = NpcState::Chase;
+                        }
                     }
+                } else if state == NpcState::Escape {
+                    civ_path.path = pathfinder(civ_ipos, player_ipos, &trespassable, &transformer, state, false);
+                    if !day_cycle.is_night {
+                        *civ_state = NpcState::Chase;
+                    }
+                } else { // chase
+                    // todo: play "*" anim and weaponds idk
+                    civ_path.path = pathfinder(civ_ipos, player_ipos, &trespassable, &transformer, state, false);
+                    if day_cycle.is_night {
+                        *civ_state = NpcState::Escape;
+                    }
+                    if let Some(path) = &civ_path.path {
+                        if path.len() == 2 {
+                            *civ_state = NpcState::Attack;
+                        }
+                    }
+                    println!("{:?}", civ_path.path);
                 }
                 
                 let mut del = false;
@@ -141,7 +176,7 @@ pub fn manage_civilians(
             }
         }
     }
-    *prev_player_ipos = player_ipos;
+    }
 }
 
 pub fn spawn_hunter(
@@ -189,7 +224,6 @@ pub fn manage_hunters(
     player_data: Query<(&Transform, &PlayerController, Entity), With<Player>>,
     transformer: Res<TransformToGrid>,
     trespassable: Res<TrespassableCells>,
-    mut prev_player_ipos: Local<IVec2>,
     mut gizmos: Gizmos,
     rapier_context: Res<RapierContext>,
     time: Res<Time>,
@@ -199,7 +233,6 @@ pub fn manage_hunters(
     let player_ipos = transformer.from_world_i32(player_pos);
     let player_vel = player_data.1.accumulated_velocity;
     let player_entity = player_data.2;
-    let mut player_in_sight = false;
     let dt = time.delta_seconds();
     for (hunter_transform, mut hunter_controller,
         mut vel_accum , mut hunter_path,
@@ -209,6 +242,7 @@ pub fn manage_hunters(
         let hunter_ipos = transformer.from_world_i32(hunter_pos);
         let direction = player_pos - hunter_pos;
         let length = direction.length();
+        let mut player_in_sight = false;
         if let Some(last_seen_entity) = raycast(hunter_pos, direction / length, length, &rapier_context) {
         if last_seen_entity == player_entity && length < SPOT_DIST{
             player_in_sight = true;
@@ -289,7 +323,7 @@ pub fn manage_hunters(
                             if chill_timer.timer.finished() {
                                 let end = hunter_ipos + IVec2::new(rng.gen_range(-4..4), rng.gen_range(-4..4));
                                 if trespassable.is_trespassable(&end) {
-                                    hunter_path.path = pathfinder(hunter_ipos, end, &trespassable, &transformer, state);
+                                    hunter_path.path = pathfinder(hunter_ipos, end, &trespassable, &transformer, state, true);
                                 }
                             }
                         }
@@ -299,7 +333,7 @@ pub fn manage_hunters(
                         *hunter_state = NpcState::Chase;
                         // todo: add "!" anim
                     } else {
-                        hunter_path.path = pathfinder(hunter_ipos, player_last_pos.pos, &trespassable, &transformer, state);
+                        hunter_path.path = pathfinder(hunter_ipos, player_last_pos.pos, &trespassable, &transformer, state, true);
                         if hunter_path.path.is_none() {
                             // todo: add "?" anim
                             *hunter_state = NpcState::Chill;
@@ -308,9 +342,9 @@ pub fn manage_hunters(
                     
                 } else { // chase & escape
                     if player_in_sight {
-                        if player_ipos != *prev_player_ipos {
-                            hunter_path.path = pathfinder(hunter_ipos, player_ipos, &trespassable, &transformer, state);
-                        }
+                        // if player_ipos != *prev_player_ipos {
+                            hunter_path.path = pathfinder(hunter_ipos, player_ipos, &trespassable, &transformer, state, true);
+                        // }
                         if hunter_path.path.is_none() {
                         *hunter_state = NpcState::Attack;
                         }
@@ -366,7 +400,6 @@ pub fn manage_hunters(
         }
     }
     }
-    *prev_player_ipos = player_ipos;
 }
 
 fn calculate_intercept(shooter_pos: Vec2, target_pos: Vec2, target_vel: Vec2, proj_vel: f32) -> Option<Vec2> {
@@ -412,12 +445,12 @@ pub fn process_proj_collisions(
         println!("Received contact force event: {:?}", contact_force_event);
     }
     for collision_event in collision_events.read() {
-        println!("{:?}", collision_event);
+        // println!("{:?}", collision_event);
         if let CollisionEvent::Started(reciever_entity, sender_entity, _) = collision_event {
             // println!("{:?} {:?}", reciever_entity, sender_entity);
             if let Ok(_) = projectiles.get(*sender_entity) { // todo: rm if process only proj
                 if *reciever_entity == player_entity {
-                    println!("PLAYER RECIEVED")
+                    // println!("PLAYER RECIEVED")
                 }
                 commands.entity(*sender_entity).despawn();
             }

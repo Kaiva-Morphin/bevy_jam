@@ -33,7 +33,7 @@ impl Default for AnimationController{
             current_animation: CharacterAnimation::simple(FrameTime::Constant(0.5), vec![1]).looped(),
             dir_offset: 7,
             priority: 0,
-            direction: 2,
+            direction: 0,
             armed: false
         }
     }
@@ -225,7 +225,7 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: Re
             },
             TextureAtlas{
                 layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 18), HAIR_COUNT as u32, 4, Some(uvec2(1, 1)), None)),
-                index: 2
+                index: hair_variant
             },
         )).insert(Transform::from_translation(vec3(0., 0., HAIR_Z)));
 

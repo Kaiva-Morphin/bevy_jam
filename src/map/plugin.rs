@@ -25,10 +25,10 @@ impl Plugin for TileMapPlugin {
         });
         app.add_systems(PreStartup, tilemap::pre_setup);
         app.add_systems(Update, tilemap::watcher);
-        app.add_systems(Update, (tilemap::spawn_tile_collision));
+        app.add_systems(Update, (tilemap::spawn_tile_collision, update_unit_grid));
         app.add_systems(PostUpdate, trespassable_spawn_listener);
         app.add_systems(PreUpdate, sizif);
-        //app.register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner");
+        app.register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner");
 
         app.register_ldtk_int_cell::<tilemap::TileObsticleBundle>(1);
         app.register_ldtk_int_cell::<tilemap::TileObsticleBundle>(3);
@@ -99,7 +99,6 @@ fn trespassable_spawn_listener(
     if !entity_q.is_empty() && transfromer.ready {
         let cells_column = vec![true; transfromer.grid_size.y as usize];
         let mut cells_grid = vec![cells_column; transfromer.grid_size.x as usize];
-        
         
         for coords in entity_q.iter(){
             let pos = ivec2(coords.x, transfromer.grid_size.y - coords.y - 1);

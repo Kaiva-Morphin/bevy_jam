@@ -25,25 +25,39 @@ fn main() {
     .add_plugins((
         CharacterAnimationPlugin,
     ));
-    app.add_systems(Update, update);
+    app.add_systems(PreUpdate, update);
     app.add_systems(Startup, setup);
     app.run();
 }
+
+#[derive(Component)]
+pub struct PreviewCharacter;
 
 fn setup(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>
 ){
     let entity = spawn_civilian_animation_bundle(&mut commands, asset_server);
+    commands.entity(entity).insert(PreviewCharacter);
 }
 
 
 
 fn update(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut controller: Query<&mut AnimationController>
+    mut controller: Query<(&mut AnimationController, Entity), With<PreviewCharacter>>,
+    mut commands: Commands,
+    asset_server: ResMut<AssetServer>
 ){
-    for mut controller in controller.iter_mut(){
+    if keyboard.just_pressed(KeyCode::Space){
+        let entity = spawn_civilian_animation_bundle(&mut commands, asset_server);
+        commands.entity(entity).insert(PreviewCharacter);
+        for (_, e) in controller.iter(){
+            commands.entity(e).despawn_recursive();
+        }
+        return;
+    }
+    for (mut controller, _) in controller.iter_mut(){
         if keyboard.pressed(KeyCode::KeyA){controller.turn_left()};
         if keyboard.pressed(KeyCode::KeyD){controller.turn_right()};
         if keyboard.pressed(KeyCode::KeyS){controller.turn_down()};

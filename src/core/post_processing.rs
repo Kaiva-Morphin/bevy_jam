@@ -287,14 +287,14 @@ impl FromWorld for PostProcessPipeline {
 // This is the component that will get passed to the shader
 #[derive(Component, Clone, Copy, ExtractComponent, ShaderType)]
 //#[derive(Default)]
-struct PostProcessUniform {
+pub struct PostProcessUniform {
     time: f32,
     target_height: f32,
     target_width: f32,
     height: f32,
     width: f32,
 
-    daytime: f32,
+    pub daytime: f32,
     
     day_color: Vec4,
     night_color: Vec4,
