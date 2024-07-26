@@ -46,3 +46,7 @@ path = "src/player_controller.rs"
 [[bin]]
 name = "anim"
 path = "src/anim.rs"
+
+[[bin]]
+name = "test"
+path = "src/test.rs"
