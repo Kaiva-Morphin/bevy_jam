@@ -128,7 +128,7 @@ impl PartType {
     }
 }
 
-pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: ResMut<AssetServer>) -> Entity{
+pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: ResMut<AssetServer>) -> Entity {
     let body_variant = rand::thread_rng().gen_range(0..BODY_COUNT);
     let outfit_variant = rand::thread_rng().gen_range(0..OUTFIT_COUNT);
     let eye_variant = rand::thread_rng().gen_range(0..EYE_PUB_COUNT);
@@ -239,7 +239,6 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: Re
     }).id()
 }
 
-// todo: ADD HURT 
 
 
 
