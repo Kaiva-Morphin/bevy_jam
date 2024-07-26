@@ -71,7 +71,7 @@ fn setup(
         AnimationController::default(),
     )).with_children(|commands| {commands.spawn((
         SpriteBundle{
-            texture: asset_server.load("vampire.png"),
+            texture: asset_server.load("player/vampire.png"),
             ..default()
         },
         TextureAtlas{
@@ -186,6 +186,7 @@ fn setup(
         .insert(BatEffect);
 }
 
+use core::functions::ExpDecay;
 
 
 struct SpeedCFG{
@@ -211,9 +212,9 @@ fn update(
     time: Res<Time>,
     mut speed_cfg: Local<SpeedCFG>,
     mut egui_context: EguiContexts,
+    mut accum: Local<f32>,
+    mut dir: Local<Option<Vec2>>,
 ){  
-    
-    //
     let ctx = egui_context.ctx_mut();
     egui::Window::new("SLIDERS").show(ctx, |ui|{
         ui.add(Slider::new(&mut speed_cfg.max_speed, 1. ..= 10_000.).text("MAX SPEED"));
@@ -232,9 +233,25 @@ fn update(
         keyboard.pressed(KeyCode::KeyW) as i32 as f32 - keyboard.pressed(KeyCode::KeyS) as i32 as f32
     );
 
-    controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * speed_cfg.max_speed, time.delta_seconds() * speed_cfg.accumulation_grain);
-    if controller.accumulated_velocity.length() > speed_cfg.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * speed_cfg.max_speed}
-    character_controller.translation = Some(controller.accumulated_velocity * time.delta_seconds());
+    if keyboard.just_pressed(KeyCode::ShiftLeft){
+        *accum = 10.;
+        *dir = Some(vec2(
+            keyboard.pressed(KeyCode::KeyD) as i32 as f32 - keyboard.pressed(KeyCode::KeyA) as i32 as f32,
+            keyboard.pressed(KeyCode::KeyW) as i32 as f32 - keyboard.pressed(KeyCode::KeyS) as i32 as f32
+        ));
+    }
+    if let Some(udir) = *dir {
+        character_controller.translation = Some(*accum * udir);
+        *accum = (*accum).exp_decay(0., 10., time.delta_seconds());
+        if *accum < 1. {*dir = None}
+    } else {
+        controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * speed_cfg.max_speed, time.delta_seconds() * speed_cfg.accumulation_grain);
+        if controller.accumulated_velocity.length() > speed_cfg.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * speed_cfg.max_speed}
+        character_controller.translation = Some(controller.accumulated_velocity * time.delta_seconds());
+    }
+
+    
+
     
     
 

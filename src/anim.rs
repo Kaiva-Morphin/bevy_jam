@@ -133,7 +133,7 @@ fn update(
             .insert(Transform::from_translation(vec3(-20., 0., 0.) + start))
             .with_children(|commands| {
                 commands.spawn((
-                    stake_bundle(&asset_server, &mut layout_handles, vec2(1., 0.))
+                    
                 ));
             });
         }
