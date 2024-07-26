@@ -3,6 +3,8 @@ use components::NpcsOnMap;
 use systems::*;
 use pathfinder::*;
 
+use crate::systems::GameState;
+
 mod components;
 mod pathfinder;
 pub mod systems;
@@ -15,6 +17,7 @@ impl Plugin for NPCPlugin {
         .insert_resource(NpcsOnMap::default())
         // .add_systems(Startup, (spawn_civilian, spawn_hunter))
         .add_systems(Update, (manage_civilians, manage_hunters, manage_projectiles,
-            process_proj_collisions, entity_spawner));
+            process_collisions, entity_spawner).run_if(in_state(GameState::InGame)))
+        ;
     }
 }

@@ -67,10 +67,17 @@ pub fn spawn_player_animation_bundle(commands: &mut Commands, asset_server: Res<
             commands.spawn((
                 Name::new("Items"),
             ));
+            commands.spawn((
+                Name::new("Shadow"),
+                SpriteBundle{
+                    texture: asset_server.load("particles/shadow.png"),
+                    ..default()
+                },
+            )).insert(Transform::from_translation(vec3(0., -8., SHADOW_Z)));
     }).id()
 }
 
-pub fn spawn_hunter_animation_bundle(mut commands: &mut Commands, asset_server: Res<AssetServer>, layout_handles: &mut ResMut<TextureAtlasLayoutHandles>){
+pub fn spawn_hunter_animation_bundle(mut commands: &mut Commands, asset_server: Res<AssetServer>, layout_handles: &mut ResMut<TextureAtlasLayoutHandles>) -> Entity{
     commands.spawn((
         AnimationController{
             ..default()
@@ -99,7 +106,7 @@ pub fn spawn_hunter_animation_bundle(mut commands: &mut Commands, asset_server: 
                 ..default()
             },
         )).insert(Transform::from_translation(vec3(0., -8., SHADOW_Z)));
-    });
+    }).id()
 }
 
 const BODY_Z : f32 = 0.;

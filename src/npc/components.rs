@@ -6,7 +6,7 @@ pub struct Civilian;
 #[derive(Component)]
 pub struct Hunter;
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct Projectile;
 
 #[derive(Component)]

@@ -37,7 +37,7 @@ pub fn spawn_civilian(
         Civilian,
         CollisionGroups::new(
             Group::from_bits(NPC_CG).unwrap(),
-            Group::from_bits(PLAYER_CG | STRUCTURES_CG).unwrap()
+            Group::from_bits(PLAYER_CG | STRUCTURES_CG | NPC_CG).unwrap()
         ),
         RigidBody::KinematicPositionBased,
         Collider::ball(5.),
@@ -47,6 +47,9 @@ pub fn spawn_civilian(
         NpcState::Chill,
         ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
         Name::new("Civilian"),
+        ActiveCollisionTypes::all(),
+        ActiveEvents::COLLISION_EVENTS,
+        Sensor,
     ));
 }
 
@@ -78,10 +81,10 @@ pub fn manage_civilians(
         if last_seen_entity == player_entity && length < SPOT_DIST {
             player_in_sight = true;
         }
-        println!("{:?}", civ_state);
+        // println!("{:?}", civ_state);
         match *civ_state {
             NpcState::Look => {},
-            NpcState::Dead => todo!(),
+            NpcState::Dead => {},
             NpcState::Attack => {
                 // todo: play attack anim
                 *civ_state = NpcState::Chase;
@@ -122,7 +125,7 @@ pub fn manage_civilians(
                             *civ_state = NpcState::Attack;
                         }
                     }
-                    println!("{:?}", civ_path.path);
+                    // println!("{:?}", civ_path.path);
                 }
                 
                 let mut del = false;
@@ -196,9 +199,13 @@ pub fn spawn_hunter(
         NpcVelAccum {v: Vec2::ZERO},
         NpcPath {path: None},
         KinematicCharacterController::default(),
-        CollisionGroups::new(
+        (CollisionGroups::new(
             Group::from_bits(NPC_CG).unwrap(),
             Group::from_bits(PLAYER_CG | STRUCTURES_CG).unwrap()
+        ),
+        ActiveCollisionTypes::all(),
+        ActiveEvents::COLLISION_EVENTS,
+        Sensor,
         ),
         HunterTimer { timer: Timer::new(Duration::from_secs_f32(HUNTER_TIMER), TimerMode::Repeating) },
         NpcState::Chase,
@@ -295,7 +302,7 @@ pub fn manage_hunters(
                         DespawnTimer { timer: Timer::new(Duration::from_secs(6), TimerMode::Once) },
                         Projectile,
                         Sensor,
-                        ActiveEvents::COLLISION_EVENTS,
+                        // ActiveEvents::COLLISION_EVENTS,
                         Sleeping::disabled(),
                     ));
                 }
@@ -436,26 +443,47 @@ pub fn manage_projectiles(
     }
 }
 
-pub fn process_proj_collisions(
+pub fn process_collisions(
     mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
-    mut contact_force_events: EventReader<ContactForceEvent>,
     mut player: Query<(Entity, &mut Player)>,
+    mut hunters: Query<&mut NpcState, (With<Hunter>, Without<Civilian>)>,
+    mut civilians: Query<&mut NpcState, With<Civilian>>,
     projectiles: Query<&Projectile>,
+    day_cycle: Res<DayCycle>,
 ) {
-    let (player_entity, player) = player.single_mut();
-    for contact_force_event in contact_force_events.read() {
-        println!("Received contact force event: {:?}", contact_force_event);
-    }
+    let (player_entity, mut player) = player.single_mut();
     for collision_event in collision_events.read() {
-        // println!("{:?}", collision_event);
         if let CollisionEvent::Started(reciever_entity, sender_entity, _) = collision_event {
-            // println!("{:?} {:?}", reciever_entity, sender_entity);
-            if let Ok(_) = projectiles.get(*sender_entity) { // todo: rm if process only proj
+            println!("{:?}", collision_event);
+            // player appears to always be reciever
+            let sender_entity = *sender_entity;
+            if let Ok(_) = projectiles.get(sender_entity) {
                 if *reciever_entity == player_entity {
-                    // println!("PLAYER RECIEVED")
+                    // todo: play hurt anim
+                    player.hp -= 10;
                 }
-                commands.entity(*sender_entity).despawn();
+                commands.entity(sender_entity).despawn();
+            } else if let Ok(mut state) = civilians.get_mut(sender_entity) {
+                if day_cycle.is_night {
+                    // kill civilian
+                    *state = NpcState::Dead;
+                } else {
+                    if *reciever_entity == player_entity {
+                        // todo: play hurt anim
+                        player.hp -= 10;
+                    }
+                }
+            } else if let Ok(mut state) = hunters.get_mut(sender_entity) {
+                if day_cycle.is_night {
+                    // kill hunter
+                    *state = NpcState::Dead;
+                } else {
+                    if *reciever_entity == player_entity {
+                        // todo: play hurt anim
+                        player.hp -= 10;
+                    }
+                }
             }
         }
     }
@@ -480,7 +508,7 @@ pub fn entity_spawner(
                     npcs_on_map.civilians += 1;
                 }
             } else {
-                if npcs_on_map.hunters < 10 {
+                if npcs_on_map.hunters < 1 {
                     spawn_hunter(&mut commands, &mut asset_server, spawner_pos);
                     npcs_on_map.hunters += 1;
                 }

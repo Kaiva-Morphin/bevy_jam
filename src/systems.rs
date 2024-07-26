@@ -61,3 +61,23 @@ fn f(x: f32) -> f32 {
         return 1. - (-2. * x + 2.).powf(2.) / 2.;
     }
 }
+
+#[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GameState {
+    #[default]
+    InGame,
+    Pause,
+}
+
+pub fn pause_game(
+    state: Res<State<GameState>>,
+    mut next_state: ResMut<NextState<GameState>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    if keyboard.just_released(KeyCode::Escape) {
+        match state.get() {
+            GameState::InGame => next_state.set(GameState::Pause),
+            GameState::Pause => next_state.set(GameState::InGame),
+        }
+    }
+}
