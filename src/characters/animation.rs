@@ -85,7 +85,6 @@ pub fn spawn_hunter_animation_bundle(mut commands: &mut Commands, asset_server: 
         VisibilityBundle::default(),
         TransformBundle::default()
     )).with_children(|commands|{
-
         commands.spawn((
             Name::new("Body"),
             PartType::Body{variant: 0, variants: 1},
