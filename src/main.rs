@@ -27,6 +27,7 @@ fn main() {
         ScreenDiagnosticsPlugin,
         TileMapPlugin,
     ))
+    .insert_state(GameState::InGame)
     .insert_resource(DayCycle {
         cycle_timer: Timer::new(Duration::from_secs_f32(DAY_DURATION), TimerMode::Repeating),
         translation_timer: Timer::new(Duration::from_secs_f32(TRANSLATION_DURATION), TimerMode::Repeating),
@@ -39,6 +40,6 @@ fn main() {
         NPCPlugin,
         CharacterAnimationPlugin,
     ))
-    .add_systems(Update, update_daycycle)
+    .add_systems(Update, (update_daycycle.run_if(in_state(GameState::InGame)), pause_game))
     .run();
 }

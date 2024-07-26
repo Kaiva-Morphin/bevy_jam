@@ -26,6 +26,20 @@ impl Default for PlayerController {
     }
 }
 
+#[derive(Default, Debug)]
+pub enum Direction {
+    Up,
+    Right,
+    #[default]
+    Down,
+    Left
+}
+
+#[derive(Component, Default)]
+pub struct PlayerAnimationState{
+    pub dir: Direction
+}
+
 pub fn spawn_player(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>
@@ -35,16 +49,17 @@ pub fn spawn_player(
         TransformBundle::default(),
         Name::new("Player"),
         CameraFollow{order: 0, speed: 10_000.},
-        RigidBody::KinematicPositionBased,
-        Collider::ball(5.),
         KinematicCharacterController::default(),
         PlayerController::default(),
-        Player,
-        ActiveEvents::COLLISION_EVENTS,
+        Player {hp: 100, xp: 0, score: 0},
         AnimationController::default(),
+        RigidBody::KinematicPositionBased,
+        Collider::ball(5.),
+        ActiveCollisionTypes::all(),
+        ActiveEvents::COLLISION_EVENTS,
         CollisionGroups::new(
             Group::from_bits(PLAYER_CG).unwrap(),
-            Group::from_bits(BULLET_CG | STRUCTURES_CG).unwrap()
+            Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG).unwrap()
         ),
     )).with_children(|commands| {commands.spawn((
         SpriteBundle{
@@ -137,4 +152,13 @@ pub fn player_controller(
     } else {
         layout.index = index + 1;
     }*/
+}
+
+pub fn player_stat(
+    mut player: Query<&mut Player>,
+) {
+    let player = player.single_mut();
+    if player.hp < 1 {
+        // dead todo:
+    }
 }
