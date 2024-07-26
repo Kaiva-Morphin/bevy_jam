@@ -48,7 +48,7 @@ pub fn spawn_player(
         ),
     )).with_children(|commands| {commands.spawn((
         SpriteBundle{
-            texture: asset_server.load("vampire.png"),
+            texture: asset_server.load("player/vampire.png"),
             ..default()
         },
         TextureAtlas{

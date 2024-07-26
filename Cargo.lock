@@ -521,7 +521,6 @@ dependencies = [
  "bevy_reflect",
  "bevy_tasks",
  "bevy_utils",
- "serde",
  "uuid",
 ]
 
@@ -595,6 +594,16 @@ dependencies = [
  "bevy_app",
  "libloading 0.8.4",
  "thiserror",
+]
+
+[[package]]
+name = "bevy_easings"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e26918df5c47bffbe41840a1f6278b42e02cd2ec73605eca5e6fbfe08eecfe7"
+dependencies = [
+ "bevy",
+ "interpolation",
 ]
 
 [[package]]
@@ -831,7 +840,6 @@ dependencies = [
  "bevy_math",
  "bevy_reflect",
  "bevy_utils",
- "serde",
  "smol_str",
  "thiserror",
 ]
@@ -884,6 +892,7 @@ version = "0.0.0-dev"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",
+ "bevy_easings",
  "bevy_ecs_ldtk",
  "bevy_hanabi",
  "bevy_rapier2d",
@@ -933,7 +942,6 @@ dependencies = [
  "bevy_reflect",
  "glam",
  "rand",
- "serde",
  "smallvec",
  "thiserror",
 ]
@@ -991,7 +999,6 @@ dependencies = [
  "log",
  "nalgebra",
  "rapier2d",
- "serde",
 ]
 
 [[package]]
@@ -1206,7 +1213,6 @@ dependencies = [
  "bevy_reflect",
  "bevy_utils",
  "crossbeam-channel",
- "serde",
  "thiserror",
 ]
 
@@ -1221,7 +1227,6 @@ dependencies = [
  "bevy_hierarchy",
  "bevy_math",
  "bevy_reflect",
- "serde",
  "thiserror",
 ]
 
@@ -1250,7 +1255,6 @@ dependencies = [
  "bevy_window",
  "bytemuck",
  "nonmax",
- "serde",
  "smallvec",
  "taffy",
  "thiserror",
@@ -1295,7 +1299,6 @@ dependencies = [
  "bevy_reflect",
  "bevy_utils",
  "raw-window-handle",
- "serde",
  "smol_str",
 ]
 
@@ -1322,7 +1325,6 @@ dependencies = [
  "cfg-if",
  "crossbeam-channel",
  "raw-window-handle",
- "serde",
  "wasm-bindgen",
  "web-sys",
  "winit",
@@ -2566,6 +2568,12 @@ checksum = "276ec31bcb4a9ee45f58bec6f9ec700ae4cf4f4f8f2fa7e06cb406bd5ffdd770"
 dependencies = [
  "num-traits",
 ]
+
+[[package]]
+name = "interpolation"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9c13ae9d91148fcb4aab6654c4c2a7d02a15395ea9e23f65170f175f8b269ce"
 
 [[package]]
 name = "inventory"
@@ -4038,9 +4046,6 @@ name = "smallvec"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "smithay-client-toolkit"

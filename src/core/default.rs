@@ -1,8 +1,5 @@
-
-
-
 pub mod plugin {
-    use bevy::{app::{Plugin, Startup, Update}, color::{Color, Srgba}, core_pipeline::tonemapping::{DebandDither, Tonemapping}, math::vec2, prelude::{default, App, Camera2d, Camera2dBundle, Commands, Gizmos, PluginGroup, Transform, Vec3}, render::{camera::{Camera, OrthographicProjection, ScalingMode}, texture::ImagePlugin, view::Msaa}, window::{PresentMode, Window, WindowPlugin, WindowTheme}, DefaultPlugins};
+    use bevy::{app::Plugin, math::vec2, prelude::{default, App, PluginGroup}, render::{texture::ImagePlugin, view::Msaa}, window::{PresentMode, Window, WindowPlugin, WindowTheme}, DefaultPlugins};
     use bevy_rapier2d::render::RapierDebugRenderPlugin;
     use bevy_rapier2d::prelude::*;
 
@@ -47,4 +44,27 @@ pub mod plugin {
         }
     }
 }
+/*
+app.add_systems(Startup, set_window_icon);
 
+fn set_window_icon(
+    // we have to use `NonSend` here
+    windows: NonSend<WinitWindows>,
+) {
+    // here we use the `image` crate to load our icon data from a png file
+    // this is not a very bevy-native solution, but it will do
+    let (icon_rgba, icon_width, icon_height) = {
+        let image = image::open("my_icon.png")
+            .expect("Failed to open icon path")
+            .into_rgba8();
+        let (width, height) = image.dimensions();
+        let rgba = image.into_raw();
+        (rgba, width, height)
+    };
+    let icon = Icon::from_rgba(icon_rgba, icon_width, icon_height).unwrap();
+    // do it for all windows
+    for window in windows.windows.values() {
+        window.set_window_icon(Some(icon.clone()));
+    }
+}
+    */

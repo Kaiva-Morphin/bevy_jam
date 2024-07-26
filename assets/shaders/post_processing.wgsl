@@ -1,23 +1,3 @@
-// This shader computes the chromatic aberration effect
-
-// Since post processing is a fullscreen effect, we use the fullscreen vertex shader provided by bevy.
-// This will import a vertex shader that renders a single fullscreen triangle.
-//
-// A fullscreen triangle is a single triangle that covers the entire screen.
-// The box in the top left in that diagram is the screen. The 4 x are the corner of the screen
-//
-// Y axis
-//  1 |  x-----x......
-//  0 |  |  s  |  . ´
-// -1 |  x_____x´
-// -2 |  :  .´
-// -3 |  :´
-//    +---------------  X axis
-//      -1  0  1  2  3
-//
-// As you can see, the triangle ends up bigger than the screen.
-//
-// You don't need to worry about this too much since bevy will compute the correct UVs for you.
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 
 @group(0) @binding(0) var screen_texture: texture_2d<f32>;
@@ -46,7 +26,7 @@ struct PostProcessUniform {
 @group(0) @binding(2) var<uniform> settings: PostProcessUniform;
 
 
-fn oklab_to_rgb(c: vec3) -> vec3
+fn oklab_to_rgb(c: vec3<f32>) -> vec3<f32>
 {
     //c.yz *= c.x;
     var l_ = c.x + 0.3963377774f * c.y + 0.2158037573f * c.z;
@@ -57,7 +37,7 @@ fn oklab_to_rgb(c: vec3) -> vec3
     var m = m_*m_*m_;
     var s = s_*s_*s_;
 
-    var rgbResult;
+    var rgbResult : vec3<f32>;
     rgbResult.r =   4.0767245293*l - 3.3072168827*m + 0.2307590544*s;
     rgbResult.g = - 1.2681437731*l + 2.6093323231*m - 0.3411344290*s;
     rgbResult.b = - 0.0041119885*l - 0.7034763098*m + 1.7068625689*s;
@@ -105,34 +85,34 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
 //
 //
 //    return col;
+
+    let day = vec4(1.5, 1.1, 0.6, 1.);
+    let night = vec4(0.005, 0.01, 0.03, 1.);
+
+
+
+    let daytime = settings.daytime;//(sin(time)) * 0.5 + 0.5;
+    let modulate = mix(settings.day_color, settings.night_color, daytime);
+
     var col = textureSample(screen_texture, texture_sampler, in.uv);
 
-
-
     let centered_uv = (in.uv - 0.5) * (settings.width/settings.height) * 2.0;
-    let rf = sqrt(dot(centered_uv, centered_uv)) * settings.vignette_strength;
+    let rf = sqrt(dot(centered_uv, centered_uv)) * settings.vignette_strength * (1. - daytime);
     let rf2_1 = rf * rf + 1.0;
     let vignette = 1.0 / (rf2_1 * rf2_1 * rf2_1);
+
     //return col * vec4(vec3(vignette), 1.0);
 
 
 
     //round(px.x) + round(px.y) % 2 == 0
     //if (round(px_coords.x) + round(px_coords.y)) % 2 == 0 {col = col * 0.2;}
-    let day = vec4(1.5, 1.1, 0.6, 1.);
-    let night = vec4(0.005, 0.01, 0.03, 1.);
+    
 
-
-    var sign = 1.;
-    var daytime = settings.daytime;
-    if sin(daytime) < 0. {sign = -1.;}
-    daytime = (sqrt(abs(sin(daytime)))) * sign * 0.5 + 0.5;
-    let modulate = mix(settings.day_color, settings.night_color, settings.daytime);
-
-
+    
 
     let pix_uv = vec2(floor(in.uv.y * (th * 0.5)) / (th * 0.5), floor(in.uv.x * (tw * 0.5)) / (tw * 0.5));
-    let wave = sin(time + pix_uv * vec2(10., 30.)) * settings.wave_strength * 0.0001;
+    let wave = sin(time + pix_uv * vec2(10., 30.)) * settings.wave_strength * 0.0001 * (1. - daytime);
     let waved_pos = in.uv + wave;
     var waved = textureSample(screen_texture, texture_sampler, waved_pos);
     if waved_pos.x < 0. || waved_pos.x > 1. {
