@@ -19,6 +19,9 @@ pub fn update_daycycle(
     mut post_process: Query<&mut PostProcessUniform>,
     time: Res<Time>,
 ) {
+    cycle.daytime = 0.;
+    cycle.is_night = false;
+    return;
     let delta = time.delta();
     if cycle.is_translating {
         cycle.translation_timer.tick(delta);
