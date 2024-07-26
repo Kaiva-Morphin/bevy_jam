@@ -1,9 +1,10 @@
 pub mod plugin {
     use bevy::{app::Plugin, math::vec2, prelude::{default, App, PluginGroup}, render::{texture::ImagePlugin, view::Msaa}, window::{PresentMode, Window, WindowPlugin, WindowTheme}, DefaultPlugins};
+    use bevy_easings::EasingsPlugin;
     use bevy_rapier2d::render::RapierDebugRenderPlugin;
     use bevy_rapier2d::prelude::*;
 
-    use crate::core::{camera::plugin::EnhancedCameraPlugin, debug::rapier_debug::plugin::SwitchableRapierDebugPlugin, post_processing::PostProcessPlugin};
+    use crate::core::{camera::plugin::EnhancedCameraPlugin, debug::rapier_debug::plugin::SwitchableRapierDebugPlugin, despawn_lifetime::DespawnLifetimePlugin, post_processing::PostProcessPlugin};
     pub struct DefaultPlugin;
 
     impl Plugin for DefaultPlugin {
@@ -24,7 +25,9 @@ pub mod plugin {
                 RapierPhysicsPlugin::<NoUserData>::default(),
                 SwitchableRapierDebugPlugin,
                 EnhancedCameraPlugin,
-                PostProcessPlugin
+                PostProcessPlugin,
+                DespawnLifetimePlugin,
+                EasingsPlugin
             ),
             );
             app.insert_resource(Msaa::Off);

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-use crate::characters::animation::AnimationController;
+use crate::characters::animation::{AnimationController, PartType};
 use crate::core::camera::plugin::CameraFollow;
 use bevy::math::{uvec2, vec2};
 use bevy_inspector_egui::bevy_egui::EguiContexts;
@@ -47,6 +47,7 @@ pub fn spawn_player(
             Group::from_bits(BULLET_CG | STRUCTURES_CG).unwrap()
         ),
     )).with_children(|commands| {commands.spawn((
+        PartType::Body{variant: 0, variants: 1},
         SpriteBundle{
             texture: asset_server.load("player/vampire.png"),
             ..default()

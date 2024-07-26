@@ -185,11 +185,13 @@ pub fn spawn_hunter(
     pos: Vec2,
 ) {
     commands.spawn((
-        Name::new("Hunter"),
-        RigidBody::KinematicPositionBased,
-        TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
-        VisibilityBundle::default(),
-        Collider::ball(5.),
+        (
+            Name::new("Hunter"),
+            RigidBody::KinematicPositionBased,
+            TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
+            VisibilityBundle::default(),
+            Collider::ball(5.)
+        ),
         Hunter,
         NpcVelAccum {v: Vec2::ZERO},
         NpcPath {path: None},
@@ -204,8 +206,9 @@ pub fn spawn_hunter(
         ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
         PlayerLastPos {pos: IVec2::ZERO},
     )).with_children(|commands| {commands.spawn((
+        PartType::Body{variant: 0, variants: 1},
         SpriteBundle{
-            texture: asset_server.load("hunter.png"),
+            texture: asset_server.load("hunter/hunter.png"),
             ..default()
         },
         TextureAtlas{

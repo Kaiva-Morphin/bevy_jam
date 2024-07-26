@@ -4,15 +4,21 @@ pub mod npc;
 pub mod map;
 pub mod systems;
 pub mod characters;
+pub mod stuff;
 
+use rand::Rng;
 use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
 use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
+use core::despawn_lifetime::DespawnTimer;
+use std::time::Duration;
 use crate::characters::animation::CivilianAnims;
-
+use bevy::math::vec3;
 use bevy::prelude::*;
 
+use bevy_easings::{Ease, EaseFunction, EasingType};
 use characters::animation::{spawn_civilian_animation_bundle, spawn_player_animation_bundle, AnimationController};
 use characters::plugin::CharacterAnimationPlugin;
+use stuff::emotion_bundle;
 
 fn main() {
     let mut app = App::new();
@@ -79,5 +85,35 @@ fn update(
         if keyboard.just_pressed(KeyCode::Digit4){
             controller.play_hurt();
         }
+
+        if keyboard.just_pressed(KeyCode::Digit5){
+            let max_offset = 7.;
+            let start = vec3(
+                rand::random::<f32>() * max_offset - max_offset * 2.,
+                rand::random::<f32>() * max_offset - max_offset * 2.,
+                0.
+            );
+            commands.spawn((
+                TransformBundle::default(),
+                VisibilityBundle::default(),
+                DespawnTimer::seconds(1.),
+            ))
+            .insert(Transform::from_translation(vec3(20., 0., 0.) + start))
+            .with_children(|commands| {
+                commands.spawn((
+                    Name::new("Particle"),
+                    emotion_bundle(&asset_server, 0),
+                    Transform::from_translation(vec3(0., 0., 0.))
+                        .ease_to(
+                            Transform::from_translation(vec3(0., 5., 0.)),
+                            EaseFunction::ExponentialOut,
+                            EasingType::Once {
+                                duration: std::time::Duration::from_secs(1),
+                            },
+                        )
+                ));
+            });
+        }
+        
     }
 }
