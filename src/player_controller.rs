@@ -9,13 +9,8 @@ use crate::characters::animation::*;
 use core::camera::plugin::CameraFollow;
 use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
 use core::debug::diagnostics_screen::plugin::{ScreenDiagnostics, ScreenDiagnosticsPlugin};
-use core::default;
 
-use bevy::color::palettes::css::RED;
-use bevy::input::keyboard::KeyboardInput;
 use bevy::math::{ivec2, uvec2, vec2};
-use bevy_ecs_ldtk::assets::{LdtkProject, LevelMetadata, LevelMetadataAccessor};
-use bevy_ecs_ldtk::{LevelIid, LevelSelection};
 use bevy_inspector_egui::bevy_egui::EguiContexts;
 use bevy_inspector_egui::egui::{self, Slider};
 use bevy_rapier2d::control::KinematicCharacterController;

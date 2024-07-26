@@ -896,13 +896,10 @@ dependencies = [
  "bevy_ecs_ldtk",
  "bevy_hanabi",
  "bevy_rapier2d",
- "bincode",
  "num_enum",
  "pathfinding",
  "rand",
  "rand_chacha",
- "serde",
- "serde_json",
  "weighted_rand",
 ]
 
@@ -1328,15 +1325,6 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
  "winit",
-]
-
-[[package]]
-name = "bincode"
-version = "1.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
-dependencies = [
- "serde",
 ]
 
 [[package]]

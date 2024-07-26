@@ -6,11 +6,10 @@ pub mod systems;
 pub mod characters;
 pub mod stuff;
 
-use rand::Rng;
 use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
 use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
 use core::despawn_lifetime::DespawnTimer;
-use std::time::Duration;
+use core::functions::TextureAtlasLayoutHandles;
 use crate::characters::animation::CivilianAnims;
 use bevy::math::vec3;
 use bevy::prelude::*;
@@ -41,9 +40,10 @@ pub struct PreviewCharacter;
 
 fn setup(
     mut commands: Commands,
-    asset_server: ResMut<AssetServer>
+    asset_server: Res<AssetServer>,
+    mut layout_handles: ResMut<TextureAtlasLayoutHandles>
 ){
-    let entity = spawn_civilian_animation_bundle(&mut commands, asset_server);
+    let entity = spawn_civilian_animation_bundle(&mut commands, &asset_server, &mut layout_handles);
     commands.entity(entity).insert(PreviewCharacter);
 }
 
@@ -53,10 +53,11 @@ fn update(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut controller: Query<(&mut AnimationController, Entity), With<PreviewCharacter>>,
     mut commands: Commands,
-    asset_server: ResMut<AssetServer>
+    asset_server: Res<AssetServer>,
+    mut layout_handles: ResMut<TextureAtlasLayoutHandles>
 ){
     if keyboard.just_pressed(KeyCode::Space){
-        let entity = spawn_civilian_animation_bundle(&mut commands, asset_server);
+        let entity = spawn_civilian_animation_bundle(&mut commands, &asset_server, &mut layout_handles);
         commands.entity(entity).insert(PreviewCharacter);
         for (_, e) in controller.iter(){
             commands.entity(e).despawn_recursive();

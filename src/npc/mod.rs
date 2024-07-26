@@ -15,7 +15,6 @@ impl Plugin for NPCPlugin {
         .insert_resource(NpcsOnMap::default())
         // .add_systems(Startup, (spawn_civilian, spawn_hunter))
         .add_systems(Update, (manage_civilians, manage_hunters, manage_projectiles,
-            process_proj_collisions, entity_spawner))
-        ;
+            process_proj_collisions, entity_spawner));
     }
 }

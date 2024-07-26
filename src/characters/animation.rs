@@ -1,6 +1,8 @@
 use bevy::{math::{uvec2, vec3}, prelude::*, render::view::visibility};
 use rand::Rng;
 
+use crate::core::functions::TextureAtlasLayoutHandles;
+
 
 
 #[derive(Component)]
@@ -41,7 +43,7 @@ impl Default for AnimationController{
 
 
 
-pub fn spawn_player_animation_bundle(commands: &mut Commands, asset_server: ResMut<AssetServer>) -> Entity{
+pub fn spawn_player_animation_bundle(commands: &mut Commands, asset_server: Res<AssetServer>, layout_handles: &mut ResMut<TextureAtlasLayoutHandles>) -> Entity{
     commands.spawn((
         AnimationController{
             ..default()
@@ -57,9 +59,10 @@ pub fn spawn_player_animation_bundle(commands: &mut Commands, asset_server: ResM
                     ..default()
                 },
                 TextureAtlas{
-                    layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 20), 7, 3, Some(uvec2(1, 1)), None)),
+                    layout: layout_handles.add_or_load(&asset_server, "Vampire", TextureAtlasLayout::from_grid(uvec2(14, 20), 7, 3, Some(uvec2(1, 1)), None)),
                     index: 2
                 },
+                PartType::Body{variant: 0, variants: 1},
             ));
             commands.spawn((
                 Name::new("Items"),
@@ -67,17 +70,35 @@ pub fn spawn_player_animation_bundle(commands: &mut Commands, asset_server: ResM
     }).id()
 }
 
-pub fn spawn_hunter_animation_bundle(mut commands: &mut Commands){
-    commands.spawn(AnimationController{
-        ..default()
-    }).with_children(|commands|{
+pub fn spawn_hunter_animation_bundle(mut commands: &mut Commands, asset_server: Res<AssetServer>, layout_handles: &mut ResMut<TextureAtlasLayoutHandles>){
+    commands.spawn((
+        AnimationController{
+            ..default()
+        },
+        VisibilityBundle::default(),
+        TransformBundle::default()
+    )).with_children(|commands|{
+
         commands.spawn((
-            Name::new("Items"),
+            Name::new("Body"),
+            PartType::Body{variant: 0, variants: 1},
+            SpriteBundle{
+                texture: asset_server.load("hunter/hunter.png"),
+                ..default()
+            },
+            TextureAtlas{
+                layout: layout_handles.add_or_load(&asset_server, "Hunter", TextureAtlasLayout::from_grid(uvec2(16, 20), 7, 3, Some(uvec2(1, 1)), None)),
+                index: 2
+            },
         ));
+
         commands.spawn((
-            Name::new("Eyes"),
-        ));
-        
+            Name::new("Shadow"),
+            SpriteBundle{
+                texture: asset_server.load("particles/shadow.png"),
+                ..default()
+            },
+        )).insert(Transform::from_translation(vec3(0., -8., SHADOW_Z)));
     });
 }
 
@@ -128,7 +149,11 @@ impl PartType {
     }
 }
 
-pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: ResMut<AssetServer>) -> Entity {
+
+
+
+
+pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: &Res<AssetServer>, layout_handles: &mut ResMut<TextureAtlasLayoutHandles>) -> Entity {
     let body_variant = rand::thread_rng().gen_range(0..BODY_COUNT);
     let outfit_variant = rand::thread_rng().gen_range(0..OUTFIT_COUNT);
     let eye_variant = rand::thread_rng().gen_range(0..EYE_PUB_COUNT);
@@ -160,7 +185,7 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: Re
                     ..default()
             },
             TextureAtlas{
-                layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 18), BODY_COUNT as u32 * 4, 3, Some(uvec2(1, 1)), None)),
+                layout: layout_handles.add_or_load(&asset_server, "Body", TextureAtlasLayout::from_grid(uvec2(14, 18), BODY_COUNT as u32 * 4, 3, Some(uvec2(1, 1)), None)),
                 index: body_variant * 3 + 1
             },
         )).insert(Transform::from_translation(vec3(0., 0., BODY_Z)));
@@ -172,7 +197,7 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: Re
                 ..default()
             },
             TextureAtlas{
-                layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(26, 22), WEAPON_COUNT as u32 * 4, 3, Some(uvec2(1, 1)), None)),
+                layout: layout_handles.add_or_load(&asset_server, "Weapon", TextureAtlasLayout::from_grid(uvec2(26, 22), WEAPON_COUNT as u32 * 4, 3, Some(uvec2(1, 1)), None)),
                 index: 2 * weapon_variant
             },
         )).insert(Transform::from_translation(vec3(-1.5, 1., ITEM_Z)));
@@ -184,7 +209,7 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: Re
                 ..default()
             },
             TextureAtlas{
-                layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 18), OUTFIT_COUNT as u32 * 4, 3, Some(uvec2(1, 1)), None)),
+                layout: layout_handles.add_or_load(&asset_server, "Outfit", TextureAtlasLayout::from_grid(uvec2(14, 18), OUTFIT_COUNT as u32 * 4, 3, Some(uvec2(1, 1)), None)),
                 index: outfit_variant * 4 + 1
             },
         )).insert(Transform::from_translation(vec3(0., 0., OUTFIT_Z)));
@@ -196,7 +221,7 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: Re
                     ..default()
             },
             TextureAtlas{
-                layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 18), BODY_COUNT as u32 * 4, 3, Some(uvec2(1, 1)), Some(uvec2(0, 57)))),
+                layout: layout_handles.add_or_load(&asset_server, "Arms", TextureAtlasLayout::from_grid(uvec2(14, 18), BODY_COUNT as u32 * 4, 3, Some(uvec2(1, 1)), Some(uvec2(0, 57)))),
                 index: outfit_variant * 4 + 1
             },
         )).insert(Transform::from_translation(vec3(0., 0., ARMS_Z)));
@@ -212,7 +237,7 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: Re
                     ..default()
                 },
                 TextureAtlas{
-                    layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(8, 4), EYE_COUNT as u32, 3, Some(uvec2(1, 1)), None)),
+                    layout: layout_handles.add_or_load(&asset_server, "Eyes", TextureAtlasLayout::from_grid(uvec2(8, 4), EYE_COUNT as u32, 3, Some(uvec2(1, 1)), None)),
                     index: eye_variant
                 },
         )).insert(Transform::from_translation(vec3(0., 0., EYES_Z)));
@@ -224,7 +249,7 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: Re
                 ..default()
             },
             TextureAtlas{
-                layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 18), HAIR_COUNT as u32, 4, Some(uvec2(1, 1)), None)),
+                layout: layout_handles.add_or_load(&asset_server, "Hair", TextureAtlasLayout::from_grid(uvec2(14, 18), HAIR_COUNT as u32, 4, Some(uvec2(1, 1)), None)),
                 index: hair_variant
             },
         )).insert(Transform::from_translation(vec3(0., 0., HAIR_Z)));
@@ -316,6 +341,8 @@ impl HunterAnims for AnimationController{
         self.ticker.to_start();
     }
 }
+
+
 
 const IDX_HURT : usize = 3;
 

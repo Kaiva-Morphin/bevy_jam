@@ -10,12 +10,6 @@ pub enum SimpleAnimated{
     Garlic
 }
 
-/*
-Angry,
-Warn,
-Qestion,
-*/
-
 pub fn emotion_bundle(asset_server: &AssetServer, idx: usize) -> impl Bundle {
     (
         SpriteBundle{
@@ -29,35 +23,74 @@ pub fn emotion_bundle(asset_server: &AssetServer, idx: usize) -> impl Bundle {
     )
 }
 
-
-
-pub fn animated_heart_gain_bundle() -> impl Bundle {
+pub fn animated_heart_gain_bundle(asset_server: &AssetServer) -> impl Bundle {
     (
-        SimpleAnimated::HeartGain
+        SimpleAnimated::HeartGain,
+        SpriteBundle{
+            texture: asset_server.load("particles/emotions.png"),
+            ..default()
+        },
+        TextureAtlas{
+            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(9, 13), 3, 3, Some(uvec2(1, 1)), None)),
+            index: 0
+        },
     )
 }
 
-pub fn animated_heart_loss_bundle() -> impl Bundle {
+pub fn animated_heart_loss_bundle(asset_server: &AssetServer,) -> impl Bundle {
     (
-        SimpleAnimated::HeartLoss
+        SimpleAnimated::HeartLoss,
+        SpriteBundle{
+            texture: asset_server.load("particles/emotions.png"),
+            ..default()
+        },
+        TextureAtlas{
+            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(9, 13), 3, 3, Some(uvec2(1, 1)), None)),
+            index: 0
+        },
     )
 }
 
-pub fn animated_fork_bundle() -> impl Bundle {
+pub fn animated_fork_bundle(asset_server: &AssetServer,) -> impl Bundle {
     (
-        SimpleAnimated::Fork
+        SimpleAnimated::Fork,
+        SpriteBundle{
+            texture: asset_server.load("particles/emotions.png"),
+            ..default()
+        },
+        TextureAtlas{
+            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(9, 13), 3, 3, Some(uvec2(1, 1)), None)),
+            index: 0
+        },
     )
 }
 
-pub fn animated_garlic_bundle() -> impl Bundle {
+pub fn animated_garlic_bundle(asset_server: &AssetServer,) -> impl Bundle {
     (
-        SimpleAnimated::Fork
+        SimpleAnimated::Garlic,
+        SpriteBundle{
+            texture: asset_server.load("particles/emotions.png"),
+            ..default()
+        },
+        TextureAtlas{
+            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(9, 13), 3, 3, Some(uvec2(1, 1)), None)),
+            index: 0
+        },
     )
 }
 
-pub fn animated_soul_bundle() -> impl Bundle {
+
+pub fn animated_soul_bundle(asset_server: &AssetServer,) -> impl Bundle {
     (
-        SimpleAnimated::Soul
+        SimpleAnimated::Soul,
+        SpriteBundle{
+            texture: asset_server.load("particles/emotions.png"),
+            ..default()
+        },
+        TextureAtlas{
+            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(9, 13), 3, 3, Some(uvec2(1, 1)), None)),
+            index: 0
+        },
     )
 }
 
