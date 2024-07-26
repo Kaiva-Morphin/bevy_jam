@@ -128,7 +128,7 @@ impl PartType {
     }
 }
 
-pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: ResMut<AssetServer>) -> Entity {
+pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: &Res<AssetServer>) -> Entity {
     let body_variant = rand::thread_rng().gen_range(0..BODY_COUNT);
     let outfit_variant = rand::thread_rng().gen_range(0..OUTFIT_COUNT);
     let eye_variant = rand::thread_rng().gen_range(0..EYE_PUB_COUNT);
@@ -348,6 +348,14 @@ impl AnimationController{
     pub fn play_walk(&mut self){
         if self.priority >= 1 {return} // prevent walk reloop
         self.current_animation = CharacterAnimation::simple(FrameTime::Constant(0.25), vec![0, 1, 2, 1]).looped()
+            .with_offsets(vec![vec3(0., -1., 0.), vec3(0., 0., 0.), vec3(0., -1., 0.), vec3(0., 0., 0.)]);
+        self.priority = 1;
+        self.ticker.to_start();
+    }
+
+    pub fn play_walk_unlooped(&mut self){
+        if self.priority >= 1 {return} // prevent walk reloop
+        self.current_animation = CharacterAnimation::simple(FrameTime::Constant(0.25), vec![0, 1, 2, 1])
             .with_offsets(vec![vec3(0., -1., 0.), vec3(0., 0., 0.), vec3(0., -1., 0.), vec3(0., 0., 0.)]);
         self.priority = 1;
         self.ticker.to_start();

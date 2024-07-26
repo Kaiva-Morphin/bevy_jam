@@ -1,14 +1,13 @@
 use std::time::Duration;
 
 use bevy::{color::palettes::css::{BLUE, RED}, math::uvec2, prelude::*};
-use bevy_ecs_ldtk::GridCoords;
 use bevy_rapier2d::prelude::*;
 use rand::{thread_rng, Rng};
 
 use crate::{
     characters::animation::*,
     map::{plugin::{EntitySpawner, TrespassableCells}, tilemap::TransformToGrid},
-    player::{components::Player, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, systems::DayCycle,
+    player::{components::Player, systems::{PlayerController, BULLET_CG, LAT_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, systems::DayCycle,
 };
 
 use super::{components::*, pathfinder};
@@ -24,39 +23,43 @@ const HUNTER_MAXSPEED: f32 = 50.0;
 const HUNTER_ACCEL: f32 = 450.0;
 
 pub fn spawn_civilian(
-    commands: &mut Commands,
-    asset_server: &mut ResMut<AssetServer>,
+    mut commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
     pos: Vec2,
 ) {
-    commands.spawn((
-        SpriteBundle {
-            texture: asset_server.load("sprites/box.png"),
-            transform: Transform::from_xyz(pos.x, pos.y, 0.),
-            ..default()
-        },
-        Civilian,
+    let entity = spawn_civilian_animation_bundle(&mut commands, asset_server);
+    let child = commands.spawn((
+        Collider::ball(4.),
         CollisionGroups::new(
             Group::from_bits(NPC_CG).unwrap(),
-            Group::from_bits(PLAYER_CG | STRUCTURES_CG | NPC_CG).unwrap()
+            Group::from_bits(STRUCTURES_CG | NPC_CG).unwrap()
         ),
+    )).id();
+    commands.entity(entity).insert((
+        TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
         RigidBody::KinematicPositionBased,
-        Collider::ball(5.),
+        Civilian,
+        ActiveCollisionTypes::all(),
+        ActiveEvents::COLLISION_EVENTS,
+        Sensor,
+        Collider::ball(4.5),
+        CollisionGroups::new(
+            Group::from_bits(LAT_CG).unwrap(),
+            Group::from_bits(PLAYER_CG).unwrap()
+        ),
         NpcVelAccum {v: Vec2::ZERO},
         NpcPath {path: None},
         KinematicCharacterController::default(),
         NpcState::Chill,
         ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
-        Name::new("Civilian"),
-        ActiveCollisionTypes::all(),
-        ActiveEvents::COLLISION_EVENTS,
-        Sensor,
-    ));
+        AttackTimer {timer: Timer::new(Duration::from_secs_f32(0.5), TimerMode::Repeating)},
+    )).add_child(child);
 }
 
 pub fn manage_civilians(
-    mut civilians_data: Query<(&Transform, &mut KinematicCharacterController,
-        &mut NpcVelAccum, &mut NpcPath, &mut NpcState, &mut ChillTimer), With<Civilian>>,
-    player_data: Query<(&Transform, Entity), With<Player>>,
+    mut civilians_data: Query<(&Transform, &mut KinematicCharacterController, &mut NpcVelAccum, &mut NpcPath, &mut NpcState,
+        &mut ChillTimer, &mut AnimationController, &mut AttackTimer), With<Civilian>>,
+    mut player_data: Query<(&Transform, Entity, &mut Player)>,
     time: Res<Time>,
     day_cycle: Res<DayCycle>,
     transformer: Res<TransformToGrid>,
@@ -64,14 +67,15 @@ pub fn manage_civilians(
     mut gizmos: Gizmos,
     rapier_context: Res<RapierContext>,
 ) {
-    let (player_transform, player_entity) = player_data.single();
+    let (player_transform, player_entity, mut player) = player_data.single_mut();
     let player_pos = player_transform.translation.xy();
     let player_ipos = transformer.from_world_i32(player_pos);
     let dt = time.delta_seconds();
     let mut rng = thread_rng();
     for (civ_transform, mut civ_controller,
         mut vel_accum , mut civ_path,
-        mut civ_state, mut chill_timer) in civilians_data.iter_mut() {
+        mut civ_state, mut chill_timer,
+        mut animation_controller, mut attack_timer) in civilians_data.iter_mut() {
         let civ_pos = civ_transform.translation.xy();
         let civ_ipos = transformer.from_world_i32(civ_pos);
         let direction = player_pos - civ_pos;
@@ -86,11 +90,23 @@ pub fn manage_civilians(
             NpcState::Look => {},
             NpcState::Dead => {},
             NpcState::Attack => {
-                // todo: play attack anim
-                *civ_state = NpcState::Chase;
+                if attack_timer.timer.elapsed_secs() == 0. {
+                    animation_controller.play_civil_attack();
+                }
+                attack_timer.timer.tick(Duration::from_secs_f32(dt));
+                if attack_timer.timer.finished() {
+                    if player_pos.distance(civ_pos) < 16. {
+                        player.hp -= 10;
+                    }
+                    *civ_state = NpcState::Chase;
+                    attack_timer.timer.set_elapsed(Duration::from_secs(0))
+                }
             },
             state => { // esc cha chi
+                let mut stop = false;
                 if state == NpcState::Chill {
+                    animation_controller.disarm();
+                    animation_controller.play_idle_priority(1);
                     if civ_path.path.is_none() {
                         chill_timer.timer.tick(Duration::from_secs_f32(dt));
                         if chill_timer.timer.finished() {
@@ -110,20 +126,29 @@ pub fn manage_civilians(
                         }
                     }
                 } else if state == NpcState::Escape {
+                    animation_controller.disarm();
                     civ_path.path = pathfinder(civ_ipos, player_ipos, &trespassable, &transformer, state, false);
                     if !day_cycle.is_night {
-                        *civ_state = NpcState::Chase;
+                        if player_in_sight {
+                            *civ_state = NpcState::Chase;
+                        } else {
+                            *civ_state = NpcState::Chill;
+                        }
                     }
                 } else { // chase
-                    // todo: play "*" anim and weaponds idk
+                    // todo: play "*" anim
+                    animation_controller.arm();
                     civ_path.path = pathfinder(civ_ipos, player_ipos, &trespassable, &transformer, state, false);
-                    if day_cycle.is_night {
-                        *civ_state = NpcState::Escape;
-                    }
-                    if let Some(path) = &civ_path.path {
-                        if path.len() == 2 {
-                            *civ_state = NpcState::Attack;
+                    if player_in_sight {
+                        if day_cycle.is_night {
+                            *civ_state = NpcState::Escape;
                         }
+                    } else {
+                        *civ_state = NpcState::Chill;
+                    }
+                    if player_pos.distance(civ_pos) < 16. {
+                        *civ_state = NpcState::Attack;
+                        stop = true;
                     }
                     // println!("{:?}", civ_path.path);
                 }
@@ -142,6 +167,7 @@ pub fn manage_civilians(
                 }
                 
                 if let Some(path) = &civ_path.path {
+                    if !stop {
                     for id in 0..path.len() - 1 {
                         let p0 = transformer.to_world(path[id]);
                         let p1 = transformer.to_world(path[id + 1]);
@@ -149,26 +175,27 @@ pub fn manage_civilians(
                     }
                     let move_dir = transformer.to_world(path[1]) - civ_pos;
 
-                    // if move_dir.x.abs() < 0.1 { // x axis is priotirized 
-                    //     if move_dir.y.abs() > 0.1 {
-                    //         if move_dir.y.is_sign_positive(){animation_controller.turn_up()}
-                    //         if move_dir.y.is_sign_negative(){animation_controller.turn_down()}
-                    //     }
-                    // } else {
-                    //     if move_dir.x.is_sign_positive(){animation_controller.turn_right()}
-                    //     if move_dir.x.is_sign_negative(){animation_controller.turn_left()}
-                    // }
-                    // if vel_accum.v.length() > 0.1 {
-                    //     animation_controller.play_walk();
-                    // } else {
-                    //     animation_controller.play_idle_priority(1);
-                    // }
+                    if move_dir.x.abs() < 0.1 { // x axis is priotirized 
+                        if move_dir.y.abs() > 0.1 {
+                            if move_dir.y.is_sign_positive(){animation_controller.turn_up()}
+                            if move_dir.y.is_sign_negative(){animation_controller.turn_down()}
+                        }
+                    } else {
+                        if move_dir.x.is_sign_positive(){animation_controller.turn_right()}
+                        if move_dir.x.is_sign_negative(){animation_controller.turn_left()}
+                    }
+                    if vel_accum.v.length() > 0.1 {
+                        animation_controller.play_walk_unlooped();
+                    } else {
+                        animation_controller.play_idle_priority(1);
+                    }
 
                     vel_accum.v = vel_accum.v.move_towards(move_dir.normalize_or_zero() * CIV_MAXSPEED, dt * CIV_ACCEL);
                     if vel_accum.v.length() > CIV_MAXSPEED {
                         vel_accum.v = vel_accum.v.normalize() * CIV_MAXSPEED
                     }
                     civ_controller.translation = Some(vel_accum.v * dt);
+                    }
                 } else {
                     if civ_pos.distance(player_pos) > THRESHOLD {
                         *civ_state = NpcState::Chill
@@ -184,24 +211,31 @@ pub fn manage_civilians(
 
 pub fn spawn_hunter(
     commands: &mut Commands,
-    asset_server: &mut ResMut<AssetServer>,
+    asset_server: &Res<AssetServer>,
     pos: Vec2,
 ) {
+    let child = commands.spawn((
+        Collider::ball(4.),
+        CollisionGroups::new(
+            Group::from_bits(NPC_CG).unwrap(),
+            Group::from_bits(STRUCTURES_CG | NPC_CG).unwrap()
+        ),
+    )).id();
     commands.spawn((
         (
             Name::new("Hunter"),
             RigidBody::KinematicPositionBased,
             TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
             VisibilityBundle::default(),
-            Collider::ball(5.)
+            Collider::ball(4.5)
         ),
         Hunter,
         NpcVelAccum {v: Vec2::ZERO},
         NpcPath {path: None},
         KinematicCharacterController::default(),
         (CollisionGroups::new(
-            Group::from_bits(NPC_CG).unwrap(),
-            Group::from_bits(PLAYER_CG | STRUCTURES_CG).unwrap()
+            Group::from_bits(LAT_CG).unwrap(),
+            Group::from_bits(PLAYER_CG).unwrap()
         ),
         ActiveCollisionTypes::all(),
         ActiveEvents::COLLISION_EVENTS,
@@ -212,6 +246,7 @@ pub fn spawn_hunter(
         AnimationController::default(),
         ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
         PlayerLastPos {pos: IVec2::ZERO},
+        
     )).with_children(|commands| {commands.spawn((
         PartType::Body{variant: 0, variants: 1},
         SpriteBundle{
@@ -222,10 +257,10 @@ pub fn spawn_hunter(
             layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(16, 20), 7, 3, Some(uvec2(1, 1)), None)),
             index: 2
         }
-    ));});
+    ));}).add_child(child);
 }
 
-pub fn manage_hunters(
+pub fn manage_hunters( // todo: desync throw anim
     mut commands: Commands,
     asset_server: ResMut<AssetServer>,
     mut hunters_data: Query<(&Transform, &mut KinematicCharacterController,
@@ -323,6 +358,7 @@ pub fn manage_hunters(
             }
             state => {
                 if state == NpcState::Chill {
+                    animation_controller.play_idle_priority(1);
                     if player_in_sight {
                         *hunter_state = NpcState::Chase;
                         // todo: add "!" anim
@@ -352,9 +388,7 @@ pub fn manage_hunters(
                     
                 } else { // chase & escape
                     if player_in_sight {
-                        // if player_ipos != *prev_player_ipos {
-                            hunter_path.path = pathfinder(hunter_ipos, player_ipos, &trespassable, &transformer, state, true);
-                        // }
+                        hunter_path.path = pathfinder(hunter_ipos, player_ipos, &trespassable, &transformer, state, true);
                         if hunter_path.path.is_none() {
                         *hunter_state = NpcState::Attack;
                         }
@@ -395,11 +429,11 @@ pub fn manage_hunters(
                         if move_dir.x.is_sign_negative(){animation_controller.turn_left()}
                     }
                     if vel_accum.v.length() > 0.1 {
-                        animation_controller.play_walk();
+                        animation_controller.play_walk_unlooped();
                     } else {
                         animation_controller.play_idle_priority(1);
                     }
-
+                    
                     vel_accum.v = vel_accum.v.move_towards(move_dir.normalize_or_zero() * HUNTER_MAXSPEED, dt * HUNTER_ACCEL);
                     if vel_accum.v.length() > HUNTER_MAXSPEED {
                         vel_accum.v = vel_accum.v.normalize() * HUNTER_MAXSPEED
@@ -455,7 +489,7 @@ pub fn process_collisions(
     let (player_entity, mut player) = player.single_mut();
     for collision_event in collision_events.read() {
         if let CollisionEvent::Started(reciever_entity, sender_entity, _) = collision_event {
-            println!("{:?}", collision_event);
+            // println!("{:?}", collision_event);
             // player appears to always be reciever
             let sender_entity = *sender_entity;
             if let Ok(_) = projectiles.get(sender_entity) {
@@ -491,7 +525,7 @@ pub fn process_collisions(
 
 pub fn entity_spawner(
     mut commands: Commands,
-    mut asset_server: ResMut<AssetServer>,
+    asset_server: Res<AssetServer>,
     mut spawners: Query<(&mut EntitySpawner, &GlobalTransform)>,
     mut npcs_on_map: ResMut<NpcsOnMap>,
     time: Res<Time>,
@@ -503,13 +537,13 @@ pub fn entity_spawner(
         if spawner.timer.finished() {
             let spawner_pos = spawner_gpos.translation().xy();
             if rand.gen_bool(0.5) {
-                if npcs_on_map.civilians < 1 {
-                    spawn_civilian(&mut commands, &mut asset_server, spawner_pos);
+                if npcs_on_map.civilians < 0 {
+                    spawn_civilian(&mut commands, &asset_server, spawner_pos);
                     npcs_on_map.civilians += 1;
                 }
             } else {
                 if npcs_on_map.hunters < 1 {
-                    spawn_hunter(&mut commands, &mut asset_server, spawner_pos);
+                    spawn_hunter(&mut commands, &asset_server, spawner_pos);
                     npcs_on_map.hunters += 1;
                 }
             }

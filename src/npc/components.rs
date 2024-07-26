@@ -54,3 +54,8 @@ pub struct ChillTimer {
 pub struct PlayerLastPos {
     pub pos: IVec2,
 }
+
+#[derive(Component)]
+pub struct AttackTimer {
+    pub timer: Timer,
+}

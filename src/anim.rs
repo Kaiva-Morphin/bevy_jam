@@ -41,9 +41,9 @@ pub struct PreviewCharacter;
 
 fn setup(
     mut commands: Commands,
-    asset_server: ResMut<AssetServer>
+    asset_server: Res<AssetServer>
 ){
-    let entity = spawn_civilian_animation_bundle(&mut commands, asset_server);
+    let entity = spawn_civilian_animation_bundle(&mut commands, &asset_server);
     commands.entity(entity).insert(PreviewCharacter);
 }
 
@@ -53,10 +53,10 @@ fn update(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut controller: Query<(&mut AnimationController, Entity), With<PreviewCharacter>>,
     mut commands: Commands,
-    asset_server: ResMut<AssetServer>
+    asset_server: Res<AssetServer>
 ){
     if keyboard.just_pressed(KeyCode::Space){
-        let entity = spawn_civilian_animation_bundle(&mut commands, asset_server);
+        let entity = spawn_civilian_animation_bundle(&mut commands, &asset_server);
         commands.entity(entity).insert(PreviewCharacter);
         for (_, e) in controller.iter(){
             commands.entity(e).despawn_recursive();

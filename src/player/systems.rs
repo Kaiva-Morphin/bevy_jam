@@ -1,8 +1,11 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::characters::animation::{AnimationController, PartType};
 use crate::core::camera::plugin::CameraFollow;
+use crate::systems::DayCycle;
 use bevy::math::{uvec2, vec2};
 use bevy_inspector_egui::bevy_egui::EguiContexts;
 use bevy_inspector_egui::egui::{self, Slider};
@@ -15,6 +18,7 @@ pub const PLAYER_CG: u32 = 0b0000_0000_0000_0001;
 pub const NPC_CG: u32 = 0b0000_0000_0000_0010;
 pub const STRUCTURES_CG: u32 = 0b0000_0000_0000_0100;
 pub const BULLET_CG: u32 = 0b0000_0000_0000_1000;
+pub const LAT_CG: u32 = 0b0000_0000_0001_0000;
 
 #[derive(Component)]
 pub struct PlayerController{
@@ -46,21 +50,22 @@ pub fn spawn_player(
 ){
     commands.spawn((
         VisibilityBundle::default(),
-        TransformBundle::default(),
+        TransformBundle::from_transform(Transform::from_xyz(16., 16., 0.)),
         Name::new("Player"),
-        CameraFollow{order: 0, speed: 10_000.},
+        CameraFollow{order: 0, speed: 10.},
         KinematicCharacterController::default(),
         PlayerController::default(),
-        Player {hp: 100, xp: 0, score: 0},
+        Player {hp: 100, xp: 0, score: 0, max_speed: 80., accumulation_grain: 600.},
         AnimationController::default(),
         RigidBody::KinematicPositionBased,
-        Collider::ball(5.),
+        Collider::ball(4.),
         ActiveCollisionTypes::all(),
         ActiveEvents::COLLISION_EVENTS,
         CollisionGroups::new(
             Group::from_bits(PLAYER_CG).unwrap(),
-            Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG).unwrap()
+            Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG | LAT_CG).unwrap()
         ),
+        DashTimer {timer: Timer::new(Duration::from_secs_f32(0.5), TimerMode::Repeating)},
     )).with_children(|commands| {commands.spawn((
         PartType::Body{variant: 0, variants: 1},
         SpriteBundle{
@@ -74,85 +79,83 @@ pub fn spawn_player(
     ));});
 }
 
-
-
-pub struct SpeedCFG{
-    max_speed : f32,
-    accumulation_grain : f32,
-    follow_speed: f32
-}
-
-impl Default for SpeedCFG {
-    fn default() -> Self {
-        SpeedCFG {
-            max_speed: 80.,
-            accumulation_grain: 600.,
-            follow_speed: 10.
-        }
-    }
-}
-
 pub fn player_controller(
-    mut player_q: Query<(&mut KinematicCharacterController, &mut PlayerController, &mut CameraFollow, &Transform), With<Player>>,
-    mut animation_controller: Query<&mut AnimationController, With<Player>>,
+    mut commands: Commands,
+    mut player_q: Query<(&mut KinematicCharacterController, &mut PlayerController,
+        &mut AnimationController, &mut DashTimer, &mut Player, Entity)>,
     keyboard: Res<ButtonInput<KeyCode>>,
+    day_cycle: Res<DayCycle>,
     time: Res<Time>,
-    mut speed_cfg: Local<SpeedCFG>,
-    mut egui_context: EguiContexts,
-){  
+    mut dash_dir: Local<Vec2>,
+) {
+    let (mut character_controller, mut controller,
+        mut animation_controller, mut dash_timer,
+        mut player, player_entity) = player_q.single_mut();
+    let dt = time.delta_seconds();
+    if dash_timer.timer.elapsed_secs() == 0. {
+        let input_dir = vec2(
+            keyboard.pressed(KeyCode::KeyD) as i32 as f32 - keyboard.pressed(KeyCode::KeyA) as i32 as f32,
+            keyboard.pressed(KeyCode::KeyW) as i32 as f32 - keyboard.pressed(KeyCode::KeyS) as i32 as f32
+        );
+        
+        controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * player.max_speed, dt * player.accumulation_grain);
+        if controller.accumulated_velocity.length() > player.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * player.max_speed}
+        character_controller.translation = Some(controller.accumulated_velocity * dt);
     
-    //
-    let ctx = egui_context.ctx_mut();
-    egui::Window::new("SLIDERS").show(ctx, |ui|{
-        ui.add(Slider::new(&mut speed_cfg.max_speed, 1. ..= 10_000.).text("MAX SPEED"));
-        ui.add(Slider::new(&mut speed_cfg.accumulation_grain, 1. ..= 10_000.).text("ACCUMULATION GRAIN"));
-        ui.add(Slider::new(&mut speed_cfg.follow_speed, 1. ..= 10_000.).text("CAMERA FOLLOW SPEED"));
-    });
-
-    let (mut character_controller, mut controller, mut follow, player_transform) = player_q.single_mut();
-    let mut animation_controller = animation_controller.single_mut();
-
-
-    follow.speed = speed_cfg.follow_speed;
-
-    let input_dir = vec2(
-        keyboard.pressed(KeyCode::KeyD) as i32 as f32 - keyboard.pressed(KeyCode::KeyA) as i32 as f32,
-        keyboard.pressed(KeyCode::KeyW) as i32 as f32 - keyboard.pressed(KeyCode::KeyS) as i32 as f32
-    );
-
-    controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * speed_cfg.max_speed, time.delta_seconds() * speed_cfg.accumulation_grain);
-    if controller.accumulated_velocity.length() > speed_cfg.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * speed_cfg.max_speed}
-    character_controller.translation = Some(controller.accumulated_velocity * time.delta_seconds());
+        if input_dir.x.abs() < 0.1 { // x axis is priotirized 
+            if input_dir.y.abs() > 0.1 {
+                if input_dir.y.is_positive(){animation_controller.turn_up()}
+                if input_dir.y.is_negative(){animation_controller.turn_down()}
+            }
+        } else {
+            if input_dir.x.is_positive(){animation_controller.turn_right()}
+            if input_dir.x.is_negative(){animation_controller.turn_left()}
+        }
+        if controller.accumulated_velocity.length() > 0.1 {
+            animation_controller.play_walk();
+        } else {
+            animation_controller.play_idle_priority(1);
+        }
     
-    
-
-    //let (mut layout, mut transform, mut anim) = player_sprite_q.single_mut();
-    
-    if input_dir.x.abs() < 0.1 { // x axis is priotirized 
-        if input_dir.y.abs() > 0.1 {
-            if input_dir.y.is_positive(){animation_controller.turn_up()}
-            if input_dir.y.is_negative(){animation_controller.turn_down()}
+        if keyboard.just_released(KeyCode::ShiftLeft) {
+            dash_timer.timer.tick(Duration::from_secs_f32(dt));
+            *dash_dir = input_dir;
+            if day_cycle.is_night {
+                commands.entity(player_entity).insert(
+                    CollisionGroups::new(
+                        Group::from_bits(PLAYER_CG).unwrap(),
+                        Group::from_bits(STRUCTURES_CG | LAT_CG).unwrap()
+                    ),
+                );
+            } else {
+                commands.entity(player_entity).insert(
+                    CollisionGroups::new(
+                        Group::from_bits(PLAYER_CG).unwrap(),
+                        Group::from_bits(STRUCTURES_CG).unwrap()
+                    ),
+                );
+            }
         }
     } else {
-        if input_dir.x.is_positive(){animation_controller.turn_right()}
-        if input_dir.x.is_negative(){animation_controller.turn_left()}
+        dash_timer.timer.tick(Duration::from_secs_f32(dt));
+        let t = dash_timer.timer.elapsed_secs();
+
+        let new_max = player.max_speed * f(t);
+        let new_gain = player.accumulation_grain * f(t);
+
+        controller.accumulated_velocity = controller.accumulated_velocity.move_towards(dash_dir.normalize_or_zero() * new_max, dt * new_gain);
+        if controller.accumulated_velocity.length() > new_max {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * new_max}
+        character_controller.translation = Some(controller.accumulated_velocity * dt);
+        
+        if dash_timer.timer.finished() {
+            dash_timer.timer.set_elapsed(Duration::from_secs_f32(0.));
+            commands.entity(player_entity).insert(
+            CollisionGroups::new(
+                Group::from_bits(PLAYER_CG).unwrap(),
+                Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG | LAT_CG).unwrap()
+            ));
+        }
     }
-    if controller.accumulated_velocity.length() > 0.1 {
-        animation_controller.play_walk();
-    } else {
-        animation_controller.play_idle_priority(1);
-    }
-    if keyboard.just_pressed(KeyCode::KeyB){
-        animation_controller.play_hurt();
-    }
-    /*transform.translation.y = ((time.elapsed_seconds() * 5.) as i32 % 2) as f32 * 0.5;
-    if controller.accumulated_velocity.length() > 0.1 {
-        let mut anim_offset = ((time.elapsed_seconds() * 5.) as i32 % 4) as usize;
-        if anim_offset == 3 {anim_offset = 1} // wrap
-        layout.index = index + anim_offset;
-    } else {
-        layout.index = index + 1;
-    }*/
 }
 
 pub fn player_stat(
@@ -162,4 +165,14 @@ pub fn player_stat(
     if player.hp < 1 {
         // dead todo:
     }
+}
+
+fn f(x: f32) -> f32 {
+    let x = x * 4.;
+    10.75276 * std::f32::consts::E.powf((-(x - 1.639964).powf(2.)/(2.*0.800886f32.powf(2.))))
+}
+
+fn g(x: f32) -> f32 {
+    let x = 3.5 - 7. * x;
+    10.75276 * std::f32::consts::E.powf((-(x - 1.639964).powf(2.)/(2.*0.800886f32.powf(2.))))
 }
