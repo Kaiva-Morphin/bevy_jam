@@ -259,10 +259,13 @@ fn update(
     } else {
         animation_controller.play_idle_priority(1);
     }
-    if keyboard.just_pressed(KeyCode::KeyB){
+    if keyboard.just_pressed(KeyCode::Digit1){
         animation_controller.play_hurt();
     }
-    if keyboard.just_pressed(KeyCode::KeyV){
+    if keyboard.just_pressed(KeyCode::Digit2){
+        animation_controller.play_hunter_throw();
+    }
+    if keyboard.just_pressed(KeyCode::Digit3){
         animation_controller.play_hunter_throw();
     }
     /*transform.translation.y = ((time.elapsed_seconds() * 5.) as i32 % 2) as f32 * 0.5;
@@ -273,9 +276,4 @@ fn update(
     } else {
         layout.index = index + 1;
     }*/
-
-
-
-    
-
 }

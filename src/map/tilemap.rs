@@ -6,7 +6,7 @@ pub fn pre_setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ){
-    let ldtk_handle = asset_server.load("map.ldtk");
+    let ldtk_handle = asset_server.load("map/map.ldtk");
     commands.spawn(LdtkWorldBundle {
         ldtk_handle,
         transform: Transform::from_translation(Vec3::Z * -300.),
