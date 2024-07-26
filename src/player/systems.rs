@@ -140,8 +140,8 @@ pub fn player_controller(
         dash_timer.timer.tick(Duration::from_secs_f32(dt));
         let t = dash_timer.timer.elapsed_secs();
 
-        let new_max = player.max_speed * f(t);
-        let new_gain = player.accumulation_grain * f(t);
+        let new_max = player.max_speed * g(t);
+        let new_gain = player.accumulation_grain * g(t);
 
         controller.accumulated_velocity = controller.accumulated_velocity.move_towards(dash_dir.normalize_or_zero() * new_max, dt * new_gain);
         if controller.accumulated_velocity.length() > new_max {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * new_max}

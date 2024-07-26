@@ -5,9 +5,7 @@ use bevy_rapier2d::prelude::*;
 use rand::{thread_rng, Rng};
 
 use crate::{
-    characters::animation::*,
-    map::{plugin::{EntitySpawner, TrespassableCells}, tilemap::TransformToGrid},
-    player::{components::Player, systems::{PlayerController, BULLET_CG, LAT_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, systems::DayCycle,
+    characters::animation::*, core::functions::TextureAtlasLayoutHandles, map::{plugin::{EntitySpawner, TrespassableCells}, tilemap::TransformToGrid}, player::{components::Player, systems::{PlayerController, BULLET_CG, LAT_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, systems::DayCycle
 };
 
 use super::{components::*, pathfinder};
@@ -26,8 +24,9 @@ pub fn spawn_civilian(
     mut commands: &mut Commands,
     asset_server: &Res<AssetServer>,
     pos: Vec2,
+    layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
 ) {
-    let entity = spawn_civilian_animation_bundle(&mut commands, asset_server);
+    let entity = spawn_civilian_animation_bundle(&mut commands, asset_server, layout_handles);
     let child = commands.spawn((
         Collider::ball(4.),
         CollisionGroups::new(
@@ -214,6 +213,7 @@ pub fn spawn_hunter(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
     pos: Vec2,
+    layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
 ) {
     let child = commands.spawn((
         Collider::ball(4.),
@@ -526,9 +526,10 @@ pub fn process_collisions(
 
 pub fn entity_spawner(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut spawners: Query<(&mut EntitySpawner, &GlobalTransform)>,
     mut npcs_on_map: ResMut<NpcsOnMap>,
+    mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
+    asset_server: Res<AssetServer>,
     time: Res<Time>,
 ) {
     let dt = time.delta_seconds();
@@ -539,12 +540,12 @@ pub fn entity_spawner(
             let spawner_pos = spawner_gpos.translation().xy();
             if rand.gen_bool(0.5) {
                 if npcs_on_map.civilians < 0 {
-                    spawn_civilian(&mut commands, &asset_server, spawner_pos);
+                    spawn_civilian(&mut commands, &asset_server, spawner_pos, &mut layout_handles);
                     npcs_on_map.civilians += 1;
                 }
             } else {
                 if npcs_on_map.hunters < 1 {
-                    spawn_hunter(&mut commands, &asset_server, spawner_pos);
+                    spawn_hunter(&mut commands, &asset_server, spawner_pos, &mut layout_handles);
                     npcs_on_map.hunters += 1;
                 }
             }
