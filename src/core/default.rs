@@ -4,7 +4,7 @@ pub mod plugin {
     use bevy_rapier2d::render::RapierDebugRenderPlugin;
     use bevy_rapier2d::prelude::*;
 
-    use crate::core::{camera::plugin::EnhancedCameraPlugin, debug::rapier_debug::plugin::SwitchableRapierDebugPlugin, despawn_lifetime::DespawnLifetimePlugin, post_processing::PostProcessPlugin};
+    use crate::core::{camera::plugin::EnhancedCameraPlugin, debug::rapier_debug::plugin::SwitchableRapierDebugPlugin, despawn_lifetime::DespawnLifetimePlugin, functions::TextureAtlasLayoutHandles, post_processing::PostProcessPlugin};
     pub struct DefaultPlugin;
 
     impl Plugin for DefaultPlugin {
@@ -30,6 +30,7 @@ pub mod plugin {
                 EasingsPlugin
             ),
             );
+            app.insert_resource(TextureAtlasLayoutHandles::default());
             app.insert_resource(Msaa::Off);
             app.insert_resource(RapierConfiguration {
                 gravity: vec2(0.0, 0.0),
