@@ -215,39 +215,36 @@ pub fn spawn_hunter(
     pos: Vec2,
     layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
 ) {
+    let entity = spawn_hunter_animation_bundle(commands, asset_server, layout_handles);
     let child = commands.spawn((
         Collider::ball(4.),
         CollisionGroups::new(
             Group::from_bits(NPC_CG).unwrap(),
-            Group::from_bits(STRUCTURES_CG | NPC_CG).unwrap()
+            Group::from_bits(STRUCTURES_CG | NPC_CG).unwrap(),
         ),
     )).id();
-    commands.spawn((
+    commands.entity(entity).insert((
+        Name::new("Hunter"),
+        TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
         (
-            Name::new("Hunter"),
             RigidBody::KinematicPositionBased,
-            TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
-            VisibilityBundle::default(),
-            Collider::ball(4.5)
+            Collider::ball(4.5),
+            CollisionGroups::new(
+                Group::from_bits(LAT_CG).unwrap(),
+                Group::from_bits(PLAYER_CG).unwrap()
+            ),
+            // ActiveCollisionTypes::all(),
+            ActiveEvents::COLLISION_EVENTS,
+            Sensor,
         ),
         Hunter,
         NpcVelAccum {v: Vec2::ZERO},
         NpcPath {path: None},
         KinematicCharacterController::default(),
-        (CollisionGroups::new(
-            Group::from_bits(LAT_CG).unwrap(),
-            Group::from_bits(PLAYER_CG).unwrap()
-        ),
-        ActiveCollisionTypes::all(),
-        ActiveEvents::COLLISION_EVENTS,
-        Sensor,
-        ),
         HunterTimer { timer: Timer::new(Duration::from_secs_f32(HUNTER_TIMER), TimerMode::Repeating) },
-        NpcState::Chase,
-        AnimationController::default(),
+        NpcState::Chill,
         ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
         PlayerLastPos {pos: IVec2::ZERO},
-        
     )).with_children(|commands| {commands.spawn((
         PartType::Body{variant: 0, variants: 1},
         SpriteBundle{
@@ -261,7 +258,7 @@ pub fn spawn_hunter(
     ));}).add_child(child);
 }
 
-pub fn manage_hunters( // todo: desync throw anim
+pub fn manage_hunters(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>,
     mut hunters_data: Query<(&Transform, &mut KinematicCharacterController,

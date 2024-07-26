@@ -77,7 +77,7 @@ pub fn spawn_player_animation_bundle(commands: &mut Commands, asset_server: Res<
     }).id()
 }
 
-pub fn spawn_hunter_animation_bundle(mut commands: &mut Commands, asset_server: Res<AssetServer>, layout_handles: &mut ResMut<TextureAtlasLayoutHandles>) -> Entity{
+pub fn spawn_hunter_animation_bundle(mut commands: &mut Commands, asset_server: &Res<AssetServer>, layout_handles: &mut ResMut<TextureAtlasLayoutHandles>) -> Entity{
     commands.spawn((
         AnimationController{
             ..default()

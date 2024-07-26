@@ -59,13 +59,24 @@ pub fn spawn_player(
         AnimationController::default(),
         RigidBody::KinematicPositionBased,
         Collider::ball(4.),
-        ActiveCollisionTypes::all(),
+        // ActiveCollisionTypes::all(),
         ActiveEvents::COLLISION_EVENTS,
-        CollisionGroups::new(
-            Group::from_bits(PLAYER_CG).unwrap(),
-            Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG | LAT_CG).unwrap()
+        // CollisionGroups::new(
+        //     Group::from_bits(PLAYER_CG).unwrap(),
+        //     Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG | LAT_CG).unwrap()
+        // ),
+        (SolverGroups::new(
+            Group::NONE,
+            Group::NONE
         ),
-        DashTimer {timer: Timer::new(Duration::from_secs_f32(0.5), TimerMode::Repeating)},
+        CollisionGroups::new(
+            Group::NONE,
+            Group::NONE
+        ),
+        Sensor,
+        ),
+        DashTimer {timer: Timer::new(Duration::from_secs_f32(0.35), TimerMode::Repeating)},
+        Sleeping::disabled()
     )).with_children(|commands| {commands.spawn((
         PartType::Body{variant: 0, variants: 1},
         SpriteBundle{
@@ -82,7 +93,7 @@ pub fn spawn_player(
 pub fn player_controller(
     mut commands: Commands,
     mut player_q: Query<(&mut KinematicCharacterController, &mut PlayerController,
-        &mut AnimationController, &mut DashTimer, &mut Player, Entity)>,
+        &mut AnimationController, &mut DashTimer, &mut Player, Entity, &CollisionGroups)>,
     keyboard: Res<ButtonInput<KeyCode>>,
     day_cycle: Res<DayCycle>,
     time: Res<Time>,
@@ -90,8 +101,9 @@ pub fn player_controller(
 ) {
     let (mut character_controller, mut controller,
         mut animation_controller, mut dash_timer,
-        mut player, player_entity) = player_q.single_mut();
+        mut player, player_entity, gr) = player_q.single_mut();
     let dt = time.delta_seconds();
+    println!("{:?}", gr);
     if dash_timer.timer.elapsed_secs() == 0. {
         let input_dir = vec2(
             keyboard.pressed(KeyCode::KeyD) as i32 as f32 - keyboard.pressed(KeyCode::KeyA) as i32 as f32,
@@ -128,10 +140,20 @@ pub fn player_controller(
                     ),
                 );
             } else {
+                // commands.entity(player_entity).insert(
+                //     CollisionGroups::new(
+                //         Group::from_bits(PLAYER_CG).unwrap(),
+                //         Group::from_bits(STRUCTURES_CG).unwrap()
+                //     ),
+                // );
+                println!("я ебал рапиру в рот {:?}", CollisionGroups::new(
+                    Group::NONE,
+                    Group::NONE
+                ));
                 commands.entity(player_entity).insert(
                     CollisionGroups::new(
-                        Group::from_bits(PLAYER_CG).unwrap(),
-                        Group::from_bits(STRUCTURES_CG).unwrap()
+                        Group::NONE,
+                        Group::NONE
                     ),
                 );
             }
@@ -167,12 +189,7 @@ pub fn player_stat(
     }
 }
 
-fn f(x: f32) -> f32 {
-    let x = x * 4.;
-    10.75276 * std::f32::consts::E.powf((-(x - 1.639964).powf(2.)/(2.*0.800886f32.powf(2.))))
-}
-
 fn g(x: f32) -> f32 {
-    let x = 3.5 - 7. * x;
-    10.75276 * std::f32::consts::E.powf((-(x - 1.639964).powf(2.)/(2.*0.800886f32.powf(2.))))
+    let x = 3. - 5. * x;
+    5. * std::f32::consts::E.powf(-(x - 1.639964).powf(2.)/(2.*0.800886f32.powf(2.)))
 }
