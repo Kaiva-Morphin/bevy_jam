@@ -103,7 +103,7 @@ pub fn player_controller(
         mut animation_controller, mut dash_timer,
         mut player, player_entity, gr) = player_q.single_mut();
     let dt = time.delta_seconds();
-    println!("{:?}", gr);
+    // println!("{:?}", gr);
     if dash_timer.timer.elapsed_secs() == 0. {
         let input_dir = vec2(
             keyboard.pressed(KeyCode::KeyD) as i32 as f32 - keyboard.pressed(KeyCode::KeyA) as i32 as f32,
