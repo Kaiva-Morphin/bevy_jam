@@ -1,6 +1,9 @@
-use bevy::{math::{ivec2, vec2}, prelude::*, utils::{HashMap, HashSet}};
+use bevy::{math::{ivec2, uvec2, vec2}, prelude::*, utils::{HashMap, HashSet}};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::{dynamics::RigidBody, geometry::{Collider, Friction}};
+use rand::Rng;
+
+use crate::core::functions::TextureAtlasLayoutHandles;
 
 pub fn pre_setup(
     mut commands: Commands,
@@ -9,7 +12,7 @@ pub fn pre_setup(
     let ldtk_handle = asset_server.load("map/map.ldtk");
     commands.spawn(LdtkWorldBundle {
         ldtk_handle,
-        transform: Transform::from_translation(Vec3::Z * -300.),
+        transform: Transform::from_translation(Vec3::Z * -9.),
         ..Default::default()
     });
     commands.insert_resource(TransformToGrid{
@@ -75,6 +78,110 @@ pub struct TileObsticle;
 #[derive(Clone, Debug, Default, Bundle, LdtkIntCell)]
 pub struct TileObsticleBundle {
     obsticle: TileObsticle,
+}
+
+#[derive(Clone, Debug, Default, Bundle, LdtkIntCell)]
+pub struct TiledTreeBundle {
+    obsticle: TileObsticle,
+    tree: AnimatedTree
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, Default, Component)]
+pub struct AnimatedTree;
+
+#[derive(Component)]
+pub struct AnimatedTreePart(u8);
+
+
+pub fn update_animated_trees(
+    mut commands: Commands,
+    mut tree_q: Query<(&mut GlobalTransform, &AnimatedTree)>
+){
+    for (mut transform, tree) in tree_q.iter_mut() {
+        let pos = transform.translation().xy();
+        
+
+    }
+}
+
+pub fn spawn_tile_tree(
+    mut commands: Commands,
+    tree_q: Query<Entity, Added<AnimatedTree>>,
+    asset_server: Res<AssetServer>,
+    mut layout_handles: ResMut<TextureAtlasLayoutHandles>
+) {
+    if !tree_q.is_empty() {
+        let mut r = rand::thread_rng();
+        for new_tree in tree_q.iter(){
+            commands.entity(new_tree).with_children(|cmd|{
+                cmd.spawn((
+                    SpriteBundle{
+                        texture: asset_server.load("map/trees.png"),
+                        ..default()
+                    },
+                    TextureAtlas{
+                        layout: layout_handles.add_or_load(&asset_server, "Tree", TextureAtlasLayout::from_grid(uvec2(28, 17), 3, 4, Some(uvec2(1, 1)), None)),
+                        index: r.gen_range(1..3) + 9
+                    },
+                    AnimatedTreePart(0)
+                )).insert(Transform::from_xyz(0., -3., 10.).with_rotation(Quat::from_rotation_x(0.1))).with_children(|cmd|{
+                    cmd.spawn((
+                        AnimatedTreePart(1),
+                        SpriteBundle{
+                            texture: asset_server.load("map/trees.png"),
+                            ..default()
+                        },
+                        TextureAtlas{
+                            layout: layout_handles.add_or_load(&asset_server, "Tree", TextureAtlasLayout::from_grid(uvec2(28, 17), 3, 4, Some(uvec2(1, 1)), None)),
+                            index: r.gen_range(1..3) + 6
+                        },
+                    )).insert(Transform::from_xyz(0., 6., 0.)).with_children(|cmd|{
+                        cmd.spawn((
+                            AnimatedTreePart(2),
+                            SpriteBundle{
+                                texture: asset_server.load("map/trees.png"),
+                                ..default()
+                            },
+                            TextureAtlas{
+                                layout: layout_handles.add_or_load(&asset_server, "Tree", TextureAtlasLayout::from_grid(uvec2(28, 17), 3, 4, Some(uvec2(1, 1)), None)),
+                                index: r.gen_range(1..3) + 3
+                            },
+                        )).insert(Transform::from_xyz(0., 10., 0.)).with_children(|cmd|{
+                            cmd.spawn((
+                                AnimatedTreePart(3),
+                                SpriteBundle{
+                                    texture: asset_server.load("map/trees.png"),
+                                    ..default()
+                                },
+                                TextureAtlas{
+                                    layout: layout_handles.add_or_load(&asset_server, "Tree", TextureAtlasLayout::from_grid(uvec2(28, 17), 3, 4, Some(uvec2(1, 1)), None)),
+                                    index: r.gen_range(1..3)
+                                },
+                            )).insert(Transform::from_xyz(0., 10., 0.));
+                        });
+                    });
+                });
+            });
+        }
+        
+        /*level_query.iter().for_each(|(level_entity, level_iid)| {
+            let ldtk_project = ldtk_project_assets
+                .get(ldtk_projects.single())
+                .expect("Project should be loaded if level has spawned");
+
+            let level = ldtk_project
+                .as_standalone()
+                .get_loaded_level_by_iid(&level_iid.to_string())
+                .expect("Spawned level should exist in LDtk project");
+
+            let LayerInstance {
+                c_wid: width,
+                c_hei: height,
+                grid_size,
+                ..
+            } = level.layer_instances()[0];
+        });*/
+    }
 }
 
 /// Spawns heron collisions for the walls of a level

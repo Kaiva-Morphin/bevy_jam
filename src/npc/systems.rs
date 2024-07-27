@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{f32::consts::PI, time::Duration};
 
 use bevy::{color::palettes::css::{BLUE, RED}, math::uvec2, prelude::*};
 use bevy_rapier2d::prelude::*;
@@ -36,9 +36,11 @@ pub fn spawn_civilian(
     )).id();
     commands.entity(entity).insert((
         TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
-        RigidBody::KinematicPositionBased,
+        RigidBody::Dynamic,
+        Velocity::zero(),
         Civilian,
         ActiveCollisionTypes::all(),
+        LockedAxes::ROTATION_LOCKED_Z,
         ActiveEvents::COLLISION_EVENTS,
         Sensor,
         Collider::ball(4.5),
@@ -48,7 +50,6 @@ pub fn spawn_civilian(
         ),
         NpcVelAccum {v: Vec2::ZERO},
         NpcPath {path: None},
-        KinematicCharacterController::default(),
         NpcState::Chill,
         ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
         AttackTimer {timer: Timer::new(Duration::from_secs_f32(0.5), TimerMode::Repeating)},
@@ -56,7 +57,7 @@ pub fn spawn_civilian(
 }
 
 pub fn manage_civilians(
-    mut civilians_data: Query<(&Transform, &mut KinematicCharacterController, &mut NpcVelAccum, &mut NpcPath, &mut NpcState,
+    mut civilians_data: Query<(&Transform, &mut Velocity, &mut NpcVelAccum, &mut NpcPath, &mut NpcState,
         &mut ChillTimer, &mut AnimationController, &mut AttackTimer), With<Civilian>>,
     mut player_data: Query<(&Transform, Entity, &mut Player)>,
     time: Res<Time>,
@@ -193,7 +194,7 @@ pub fn manage_civilians(
                     if vel_accum.v.length() > CIV_MAXSPEED {
                         vel_accum.v = vel_accum.v.normalize() * CIV_MAXSPEED
                     }
-                    civ_controller.translation = Some(vel_accum.v * dt);
+                    civ_controller.linvel = vel_accum.v;
                     }
                 } else {
                     if civ_pos.distance(player_pos) > THRESHOLD {
@@ -224,23 +225,26 @@ pub fn spawn_hunter(
         ),
     )).id();
     commands.entity(entity).insert((
-        Name::new("Hunter"),
-        TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
         (
-            RigidBody::KinematicPositionBased,
-            Collider::ball(4.5),
-            CollisionGroups::new(
-                Group::from_bits(LAT_CG).unwrap(),
-                Group::from_bits(PLAYER_CG).unwrap()
-            ),
-            // ActiveCollisionTypes::all(),
-            ActiveEvents::COLLISION_EVENTS,
-            Sensor,
+            Name::new("Hunter"),
+            RigidBody::Dynamic,
+            TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
+            VisibilityBundle::default(),
+            Collider::ball(4.5)
         ),
         Hunter,
+        LockedAxes::ROTATION_LOCKED_Z,
         NpcVelAccum {v: Vec2::ZERO},
         NpcPath {path: None},
-        KinematicCharacterController::default(),
+        Velocity::zero(),
+        (CollisionGroups::new(
+            Group::from_bits(LAT_CG).unwrap(),
+            Group::from_bits(PLAYER_CG).unwrap()
+        ),
+        ActiveCollisionTypes::all(),
+        ActiveEvents::COLLISION_EVENTS,
+        Sensor,
+        ),
         HunterTimer { timer: Timer::new(Duration::from_secs_f32(HUNTER_TIMER), TimerMode::Repeating) },
         NpcState::Chill,
         ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
@@ -260,8 +264,8 @@ pub fn spawn_hunter(
 
 pub fn manage_hunters(
     mut commands: Commands,
-    asset_server: ResMut<AssetServer>,
-    mut hunters_data: Query<(&Transform, &mut KinematicCharacterController,
+    asset_server: Res<AssetServer>,
+    mut hunters_data: Query<(&Transform, &mut Velocity,
         &mut NpcVelAccum, &mut NpcPath, &mut HunterTimer, &mut NpcState,
         &mut ChillTimer, &mut AnimationController, &mut PlayerLastPos), Without<Player>>,
     player_data: Query<(&Transform, &PlayerController, Entity), With<Player>>,
@@ -270,6 +274,7 @@ pub fn manage_hunters(
     mut gizmos: Gizmos,
     rapier_context: Res<RapierContext>,
     time: Res<Time>,
+    mut atlas_handles: ResMut<TextureAtlasLayoutHandles>
 ) {
     let player_data = player_data.single();
     let player_pos = player_data.0.translation.xy();
@@ -281,6 +286,7 @@ pub fn manage_hunters(
         mut vel_accum , mut hunter_path,
         mut hunter_timer, mut hunter_state, mut chill_timer,
         mut animation_controller, mut player_last_pos) in hunters_data.iter_mut() {
+        hunter_controller.linvel = Vec2::ZERO;
         let hunter_pos = hunter_transform.translation.xy();
         let hunter_ipos = transformer.from_world_i32(hunter_pos);
         let direction = player_pos - hunter_pos;
@@ -315,12 +321,15 @@ pub fn manage_hunters(
                 if let Some(intercept) = calculate_intercept(hunter_pos, player_pos, player_vel, PROJ_V) {
                     let dir = intercept - hunter_pos;
                     let dir = dir / dir.length();
-                    commands.spawn((
-                        SpriteBundle {
-                            texture: asset_server.load("sprites/box.png"), // todo: rm later
-                            transform: Transform::from_translation(hunter_pos.extend(0.)),
-                            ..default()
-                        },
+                    let throwable_variant = rand::thread_rng().gen_range(0..4);
+                    let e = match throwable_variant {
+                        0 => {commands.spawn(crate::stuff::animated_fork_bundle(&asset_server, &mut atlas_handles)).id()},
+                        1 => {commands.spawn(crate::stuff::animated_knife_bundle(&asset_server, &mut atlas_handles)).id()},
+                        2 => {commands.spawn(crate::stuff::animated_garlic_bundle(&asset_server, &mut atlas_handles)).id()},
+                        _ => {commands.spawn(crate::stuff::stake_bundle(&asset_server, &mut atlas_handles, dir)).id()},
+                    };
+                    commands.entity(e).insert((
+                        Transform::from_translation(hunter_pos.extend(0.)).with_rotation(Quat::from_rotation_z(if throwable_variant != 3 {0.} else {dir.to_angle() + PI * 0.75})),
                         RigidBody::Dynamic,
                         Collider::cuboid(3., 3.),
                         CollisionGroups::new(
@@ -436,7 +445,7 @@ pub fn manage_hunters(
                     if vel_accum.v.length() > HUNTER_MAXSPEED {
                         vel_accum.v = vel_accum.v.normalize() * HUNTER_MAXSPEED
                     }
-                    hunter_controller.translation = Some(vel_accum.v * dt);
+                    hunter_controller.linvel = vel_accum.v;
                 }
             }
         }

@@ -4,6 +4,7 @@ mod npc;
 mod map;
 pub mod systems;
 mod characters;
+pub mod stuff;
 
 use crate::characters::animation::*;
 use core::camera::plugin::CameraFollow;
@@ -13,7 +14,6 @@ use core::debug::diagnostics_screen::plugin::{ScreenDiagnostics, ScreenDiagnosti
 use bevy::math::{ivec2, uvec2, vec2};
 use bevy_inspector_egui::bevy_egui::EguiContexts;
 use bevy_inspector_egui::egui::{self, Slider};
-use bevy_rapier2d::control::KinematicCharacterController;
 use bevy_rapier2d::prelude::*;
 use bevy::prelude::*;
 use characters::animation::AnimationController;
@@ -63,11 +63,10 @@ fn setup(
         TransformBundle::default(),
         Name::new("Player"),
         CameraFollow{order: 0, speed: 10_000.},
-        RigidBody::KinematicPositionBased,
+        RigidBody::Dynamic,
         Collider::ball(5.),
-        KinematicCharacterController::default(),
+        Velocity::default(),
         PlayerController::default(),
-
         AnimationController::default(),
     )).with_children(|commands| {commands.spawn((
         SpriteBundle{
@@ -206,7 +205,7 @@ impl Default for SpeedCFG {
 }
 
 fn update(
-    mut player_q: Query<(&mut KinematicCharacterController, &mut PlayerController, &mut CameraFollow, &Transform)>,
+    mut player_q: Query<(&mut Velocity, &mut PlayerController, &mut CameraFollow, &Transform)>,
     mut animation_controller: Query<&mut AnimationController>,
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
@@ -240,19 +239,16 @@ fn update(
             keyboard.pressed(KeyCode::KeyW) as i32 as f32 - keyboard.pressed(KeyCode::KeyS) as i32 as f32
         ));
     }
+    //character_controller.linvel = Vec2::ZERO;
     if let Some(udir) = *dir {
-        character_controller.translation = Some(*accum * udir);
+        character_controller.linvel = *accum * udir * 100.;
         *accum = (*accum).exp_decay(0., 10., time.delta_seconds());
         if *accum < 1. {*dir = None}
     } else {
         controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * speed_cfg.max_speed, time.delta_seconds() * speed_cfg.accumulation_grain);
         if controller.accumulated_velocity.length() > speed_cfg.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * speed_cfg.max_speed}
-        character_controller.translation = Some(controller.accumulated_velocity * time.delta_seconds());
-    }
-
-    
-
-    
+        character_controller.linvel = controller.accumulated_velocity;
+    };
     
 
     //let (mut layout, mut transform, mut anim) = player_sprite_q.single_mut();
