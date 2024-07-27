@@ -51,7 +51,7 @@ pub fn spawn_player(
         TransformBundle::from_transform(Transform::from_xyz(16., 16., 0.)),
         Name::new("Player"),
         CameraFollow{order: 0, speed: 10.},
-        Player {hp: 100, xp: 0, score: 0, max_speed: 80., accumulation_grain: 600., get_hit: 0},
+        Player {hp: 100, max_hp: 100, max_speed: 80., accumulation_grain: 600., get_hit: 0, ..default()},
         AnimationController::default(),
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED_Z,

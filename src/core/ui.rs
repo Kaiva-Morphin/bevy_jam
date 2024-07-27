@@ -7,6 +7,9 @@ use bevy::ui::widget::UiImageSize;
 use bevy::ui::ContentSize;
 use bevy::window::WindowResized;
 
+use crate::player::components::Player;
+use crate::{get_local_time_f, DAY_DURATION, TRANSLATION_DURATION};
+
 use super::camera::plugin::{MainCamera, TARGET_ASPECT, TARGET_HEIGHT, TARGET_WIDTH};
 use super::functions::TextureAtlasLayoutHandles;
 
@@ -155,11 +158,14 @@ fn on_resize_system(
 fn update(
     mut blood_e: Query<&mut TextureAtlas, (With<Blood>, Without<Daynight>)>,
     mut daynight_e: Query<(&mut TextureAtlas, &mut UiImage), (Without<Blood>, With<Daynight>)>,
-    time: Res<Time>
+    time: Res<Time<Virtual>>,
+    player_stats: Query<&Player>
 ){
-    blood_e.single_mut().index = (time.elapsed_seconds() * 5.) as usize % 20;
-    let d = (time.elapsed_seconds() * 15.) as usize % (29 * 2 - 2);
+    let stats = player_stats.single();
+    blood_e.single_mut().index = ((1. - stats.hp as f32 / stats.max_hp as f32) * 20.).round() as usize % 20;
     let (mut atlas, mut image) = daynight_e.single_mut();
+    let t = (get_local_time_f(time.elapsed_seconds()) + 0.75) % 1.;
+    let d = (t * (29. * 2. - 2.)).ceil() as usize;
     atlas.index = if d < 29 {image.flip_x = false; d} else {image.flip_x = true; (29 * 2) - d - 2};
 }
 

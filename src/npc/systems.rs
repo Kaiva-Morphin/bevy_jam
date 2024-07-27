@@ -89,7 +89,7 @@ pub fn manage_civilians(
         match *civ_state {
             NpcState::Look => {},
             NpcState::Dead => {
-                spawn_cililian_body(&mut commands, &asset_server, civ_pos.extend(0.));
+                spawn_cililian_body(&mut commands, &mut layout_handles,&asset_server, civ_pos.extend(0.));
                 commands.entity(civ_entity).despawn_recursive();
             },
             NpcState::Attack => {
@@ -375,7 +375,7 @@ pub fn manage_hunters(
             }
             }
             NpcState::Dead => {
-                spawn_hunter_body(&mut commands, &asset_server, hunter_pos.extend(0.));
+                spawn_hunter_body(&mut commands, &mut atlas_handles, &asset_server, hunter_pos.extend(0.));
                 commands.entity(hunter_entity).despawn_recursive();
             }
             state => {

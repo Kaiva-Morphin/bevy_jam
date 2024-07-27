@@ -99,25 +99,31 @@ pub struct AnimatedTreePart(u8);
 
 pub fn update_animated_trees(
     mut commands: Commands,
-    mut tree_q: Query<(&GlobalTransform, &mut Transform, &AnimatedTreePart)>,
-    time: Res<Time>,
+    mut tree_q: Query<(&GlobalTransform, &mut Transform, &AnimatedTreePart, &mut Sprite)>,
+    time: Res<Time<Virtual>>,
     mut perlin: Local<Option<Perlin>>
 ){
     if perlin.is_none(){*perlin = Some(Perlin::new(rand::thread_rng().gen::<u32>()))}
-    let t: f32 = time.elapsed_seconds() * 0.1;
-    for (glob, mut transform, tree) in tree_q.iter_mut() {
+    let t: f32 = time.elapsed_seconds() * 10.;
+    for (glob, mut transform, tree, mut s) in tree_q.iter_mut() {
         if tree.0 == 0 {continue;}
-        let offset = vec3(0., match tree.0 {
+        let offset = vec3(0., -match tree.0 {
             1 => 6.,
             2 => 16.,
             _ => 26.
         }, 0.);
-        let arr = (offset + glob.translation() + vec3(10., 3., 0.1) * t).to_array().map(|x| x as f64);
-        let v = perlin.unwrap().get(arr);
-        transform.rotation = Quat::from_rotation_z(v as f32 * 0.1);
+
+        let p = perlin.unwrap().get([
+            (offset.x + glob.translation().x) as f64 * 0.002 + time.elapsed_seconds_f64() * 0.8,// + time.elapsed_seconds_f64() * 0.1,
+            (offset.y + glob.translation().y) as f64 * 0.01 + time.elapsed_seconds_f64() * 0.5,
+            time.elapsed_seconds_f64() * 1.,
+        ]) as f32;
+        let perlin_inf = p * 0.1 + 0.9;
+        s.color = Color::srgb(perlin_inf, perlin_inf, perlin_inf);
+        let angle = p * 0.15 + 0.1;
+        transform.rotation = Quat::from_rotation_z(angle);
     }
 }
-
 pub fn spawn_tile_tree(
     mut commands: Commands,
     tree_q: Query<Entity, Added<AnimatedTree>>,

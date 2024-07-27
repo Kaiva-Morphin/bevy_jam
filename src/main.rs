@@ -31,9 +31,6 @@ fn main() {
     ))
     .insert_state(GameState::InGame)
     .insert_resource(DayCycle {
-        cycle_timer: Timer::new(Duration::from_secs_f32(DAY_DURATION), TimerMode::Repeating),
-        translation_timer: Timer::new(Duration::from_secs_f32(TRANSLATION_DURATION), TimerMode::Repeating),
-        daytime: 0.,
         is_night: true,
         is_translating: false,
     })

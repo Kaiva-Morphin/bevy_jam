@@ -1,59 +1,42 @@
+use std::ops::Rem;
+
 use bevy::{math::uvec2, prelude::*};
+use pathfinding::num_traits::{Euclid, Signed};
 
 use crate::core::{functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform};
 
-pub const TRANSLATION_DURATION: f32 = 5.0;
+pub const TRANSLATION_DURATION: f32 = 1.0;
 pub const DAY_DURATION: f32 = 10.0;
 
 #[derive(Resource)]
 pub struct DayCycle {
-    pub translation_timer: Timer,
-    pub cycle_timer: Timer,
-    pub daytime: f32,
     pub is_night: bool,
     pub is_translating: bool,
 }
 
+// 0 is morning
+pub fn get_local_time_f(elapsed: f32) -> f32{
+    ((elapsed + TRANSLATION_DURATION * 0.5) % (TRANSLATION_DURATION * 2. + DAY_DURATION * 2.)) / (TRANSLATION_DURATION * 2. + DAY_DURATION * 2.)
+}
+
+
 pub fn update_daycycle(
     mut cycle: ResMut<DayCycle>,
     mut post_process: Query<&mut PostProcessUniform>,
-    time: Res<Time>,
+    time: Res<Time<Virtual>>,
 ) {
-    cycle.daytime = 0.;
-    cycle.is_night = false;
-    return;
-    let delta = time.delta();
-    if cycle.is_translating {
-        cycle.translation_timer.tick(delta);
-        let mut elapsed = cycle.translation_timer.elapsed_secs(); 
-        elapsed /= TRANSLATION_DURATION;
-        
-        if cycle.translation_timer.finished() {
-            cycle.is_translating = false;
+    let cycle_time = (time.elapsed_seconds() + TRANSLATION_DURATION * 2. + DAY_DURATION * 2.) % (TRANSLATION_DURATION * 2. + DAY_DURATION * 2.);
+    let is_night_raw = cycle_time > (TRANSLATION_DURATION + DAY_DURATION);
+    let local_time = cycle_time % (TRANSLATION_DURATION + DAY_DURATION);
+    cycle.is_night = is_night_raw;
+    if local_time > DAY_DURATION {
+        let translation = (local_time - DAY_DURATION) / TRANSLATION_DURATION;
+        post_process.single_mut().daytime = if is_night_raw {translation} else {1.-translation};
+        if translation > 0.5 {
             cycle.is_night = !cycle.is_night;
-            return;
         }
-        
-        if cycle.is_night {
-            elapsed = 1. - elapsed;
-        }
-        
-        cycle.daytime = f(elapsed);
-        post_process.single_mut().daytime = cycle.daytime;
-        // x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2
     } else {
-        cycle.cycle_timer.tick(delta);
-        
-        if cycle.cycle_timer.finished() {
-            cycle.is_translating = true;
-            return;
-        }
-        
-        if cycle.is_night {
-            post_process.single_mut().daytime = 1.;
-        } else {
-            post_process.single_mut().daytime = 0.;
-        }
+        post_process.single_mut().daytime = if cycle.is_night {0.} else {1.}
     }
 }
 
