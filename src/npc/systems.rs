@@ -114,7 +114,9 @@ pub fn manage_civilians(
                 let mut stop = false;
                 if state == NpcState::Chill {
                     animation_controller.disarm();
+                    
                     animation_controller.play_idle_priority(1);
+
                     if civ_path.path.is_none() {
                         chill_timer.timer.tick(Duration::from_secs_f32(dt));
                         if chill_timer.timer.finished() {
@@ -200,7 +202,6 @@ pub fn manage_civilians(
                     } else {
                         animation_controller.play_idle_priority(1);
                     }
-
                     vel_accum.v = vel_accum.v.move_towards(move_dir.normalize_or_zero() * CIV_MAXSPEED, dt * CIV_ACCEL);
                     if vel_accum.v.length() > CIV_MAXSPEED {
                         vel_accum.v = vel_accum.v.normalize() * CIV_MAXSPEED
@@ -223,6 +224,7 @@ pub fn manage_civilians(
                     }
                 }
                 if stop {
+                    warn!("OVERRIDE!");
                     civ_controller.linvel = Vec2::ZERO;
                     animation_controller.play_idle_priority(1);
                 }
