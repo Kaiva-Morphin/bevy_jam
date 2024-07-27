@@ -7,10 +7,16 @@ pub struct Player {
     pub score: i32,
     pub max_speed: f32,
     pub accumulation_grain: f32,
+    pub get_hit: u32,
 } // armor (phys res); speed; hp gain; xp gain; max hp;
 // todo: add get dmg fn -> play hurt anim -= hp
 
 #[derive(Component)]
 pub struct DashTimer {
     pub timer: Timer,
+}
+
+#[derive(Event)]
+pub struct GetHit {
+    pub typ
 }

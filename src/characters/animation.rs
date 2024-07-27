@@ -409,7 +409,6 @@ impl AnimationController{
         self.current_animation = CharacterAnimation::simple(FrameTime::Constant(0.25), vec![0, 1, 2, 1])
             .with_offsets(vec![vec3(0., -1., 0.), vec3(0., 0., 0.), vec3(0., -1., 0.), vec3(0., 0., 0.)]);
         self.priority = 1;
-        self.ticker.to_start();
     }
 
     pub fn turn_left(&mut self){

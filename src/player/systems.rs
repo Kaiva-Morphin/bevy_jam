@@ -51,7 +51,7 @@ pub fn spawn_player(
         TransformBundle::from_transform(Transform::from_xyz(16., 16., 0.)),
         Name::new("Player"),
         CameraFollow{order: 0, speed: 10.},
-        Player {hp: 100, xp: 0, score: 0, max_speed: 80., accumulation_grain: 600.},
+        Player {hp: 100, xp: 0, score: 0, max_speed: 80., accumulation_grain: 600., get_hit: 0},
         AnimationController::default(),
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED_Z,
@@ -156,15 +156,6 @@ pub fn player_controller(
                 Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG).unwrap()
             )).remove::<Sensor>();
         }
-    }
-}
-
-pub fn player_stat(
-    mut player: Query<&mut Player>,
-) {
-    let player = player.single_mut();
-    if player.hp < 1 {
-        // dead todo:
     }
 }
 
