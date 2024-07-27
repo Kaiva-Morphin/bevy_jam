@@ -61,12 +61,6 @@ pub fn spawn_player(
         ActiveEvents::COLLISION_EVENTS,
         Velocity::zero(),
         PlayerController::default(),
-        CollisionGroups::new(
-            Group::NONE,
-            Group::NONE
-        ),
-        Sensor,
-        ),
         DashTimer {timer: Timer::new(Duration::from_secs_f32(0.35), TimerMode::Repeating)},
         Sleeping::disabled()
     )).with_children(|commands| {commands.spawn((
@@ -96,7 +90,6 @@ pub fn player_controller(
         mut player, player_entity) = player_q.single_mut();
     character_controller.linvel = Vec2::ZERO;
     let dt = time.delta_seconds();
-    println!("{:?}", gr);
     if dash_timer.timer.elapsed_secs() == 0. {
         let input_dir = vec2(
             keyboard.pressed(KeyCode::KeyD) as i32 as f32 - keyboard.pressed(KeyCode::KeyA) as i32 as f32,

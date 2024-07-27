@@ -104,7 +104,7 @@ pub fn spawn_hunter_animation_bundle(mut commands: &mut Commands, asset_server: 
                 texture: asset_server.load("particles/shadow.png"),
                 ..default()
             },
-        )).insert(Transform::from_translation(vec3(0., -8., SHADOW_Z)));
+        )).insert(Transform::from_translation(vec3(0., -10., SHADOW_Z)));
     }).id()
 }
 

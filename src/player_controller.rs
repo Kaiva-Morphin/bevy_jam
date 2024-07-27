@@ -4,6 +4,7 @@ mod npc;
 mod map;
 pub mod systems;
 mod characters;
+pub mod stuff;
 
 use crate::characters::animation::*;
 use core::camera::plugin::CameraFollow;

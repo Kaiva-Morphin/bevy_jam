@@ -134,19 +134,19 @@ pub fn animated_knife_bundle(asset_server: &Res<AssetServer>, atlas_handles: &mu
     )
 }
 
-/*pub fn animated_soul_bundle(asset_server: &AssetServer, atlas_handles: &mut ResMut<TextureAtlasLayoutHandles>,) -> impl Bundle {
+pub fn animated_soul_bundle(asset_server: &Res<AssetServer>, atlas_handles: &mut ResMut<TextureAtlasLayoutHandles>,) -> impl Bundle {
     (
         SimpleAnimated{effect: SimpleAnimatedTexture::Soul, timer: Timer::from_seconds(0.06, TimerMode::Repeating)},
         SpriteBundle{
-            texture: asset_server.load("hunter/throwables.png"),
+            texture: asset_server.load("particles/soul.png"),
             ..default()
         },
         TextureAtlas{
-            layout: atlas_handles.add_or_load(asset_server, "Throwables", TextureAtlasLayout::from_grid(uvec2(13, 13), 10, 4, Some(uvec2(1, 1)), None)),
+            layout: atlas_handles.add_or_load(asset_server, "Soul", TextureAtlasLayout::from_grid(uvec2(10, 12), 5, 1, Some(uvec2(1, 1)), None)),
             index: 0
         },
     )
-}*/
+}
 
 #[derive(Component)]
 pub struct Stake;
@@ -167,6 +167,15 @@ pub fn stake_bundle(asset_server: &Res<AssetServer>, atlas_handles: &mut ResMut<
 }
 
 
+
+
+pub fn spawn_cililian_body(){
+
+}
+
+pub fn spawn_hunter_body(){
+
+}
 
 
 

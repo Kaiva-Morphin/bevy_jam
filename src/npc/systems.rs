@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{f32::consts::PI, time::Duration};
 
 use bevy::{color::palettes::css::{BLUE, RED}, math::uvec2, prelude::*};
 use bevy_rapier2d::prelude::*;
@@ -225,8 +225,6 @@ pub fn spawn_hunter(
         ),
     )).id();
     commands.entity(entity).insert((
-        Name::new("Hunter"),
-        TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
         (
             Name::new("Hunter"),
             RigidBody::Dynamic,
@@ -266,7 +264,7 @@ pub fn spawn_hunter(
 
 pub fn manage_hunters(
     mut commands: Commands,
-    asset_server: ResMut<AssetServer>,
+    asset_server: Res<AssetServer>,
     mut hunters_data: Query<(&Transform, &mut Velocity,
         &mut NpcVelAccum, &mut NpcPath, &mut HunterTimer, &mut NpcState,
         &mut ChillTimer, &mut AnimationController, &mut PlayerLastPos), Without<Player>>,
@@ -276,6 +274,7 @@ pub fn manage_hunters(
     mut gizmos: Gizmos,
     rapier_context: Res<RapierContext>,
     time: Res<Time>,
+    mut atlas_handles: ResMut<TextureAtlasLayoutHandles>
 ) {
     let player_data = player_data.single();
     let player_pos = player_data.0.translation.xy();
@@ -322,12 +321,15 @@ pub fn manage_hunters(
                 if let Some(intercept) = calculate_intercept(hunter_pos, player_pos, player_vel, PROJ_V) {
                     let dir = intercept - hunter_pos;
                     let dir = dir / dir.length();
-                    commands.spawn((
-                        SpriteBundle {
-                            texture: asset_server.load("sprites/box.png"), // todo: rm later
-                            transform: Transform::from_translation(hunter_pos.extend(0.)),
-                            ..default()
-                        },
+                    let throwable_variant = rand::thread_rng().gen_range(0..4);
+                    let e = match throwable_variant {
+                        0 => {commands.spawn(crate::stuff::animated_fork_bundle(&asset_server, &mut atlas_handles)).id()},
+                        1 => {commands.spawn(crate::stuff::animated_knife_bundle(&asset_server, &mut atlas_handles)).id()},
+                        2 => {commands.spawn(crate::stuff::animated_garlic_bundle(&asset_server, &mut atlas_handles)).id()},
+                        _ => {commands.spawn(crate::stuff::stake_bundle(&asset_server, &mut atlas_handles, dir)).id()},
+                    };
+                    commands.entity(e).insert((
+                        Transform::from_translation(hunter_pos.extend(0.)).with_rotation(Quat::from_rotation_z(if throwable_variant != 3 {0.} else {dir.to_angle() + PI * 0.75})),
                         RigidBody::Dynamic,
                         Collider::cuboid(3., 3.),
                         CollisionGroups::new(

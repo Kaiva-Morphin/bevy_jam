@@ -124,7 +124,7 @@ pub fn spawn_tile_tree(
                         index: r.gen_range(1..3) + 9
                     },
                     AnimatedTreePart(0)
-                )).insert(Transform::from_xyz(0., -3., 10.).with_rotation(Quat::from_rotation_x(0.001))).with_children(|cmd|{
+                )).insert(Transform::from_xyz(0., -3., 10.).with_rotation(Quat::from_rotation_x(0.1))).with_children(|cmd|{
                     cmd.spawn((
                         AnimatedTreePart(1),
                         SpriteBundle{
