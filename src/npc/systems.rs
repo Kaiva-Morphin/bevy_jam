@@ -230,7 +230,6 @@ pub fn manage_civilians(
                     }
                 }
                 if stop {
-                    warn!("OVERRIDE!");
                     civ_controller.linvel = Vec2::ZERO;
                     animation_controller.play_idle_priority(1);
                 }

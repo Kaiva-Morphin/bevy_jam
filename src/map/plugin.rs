@@ -25,8 +25,8 @@ impl Plugin for TileMapPlugin {
         });
         app.add_systems(PreStartup, tilemap::pre_setup);
         app.add_systems(Update, tilemap::watcher);
-        app.add_systems(Update, (tilemap::spawn_tile_collision, update_unit_grid, tilemap::spawn_tile_tree));
-        app.add_systems(PostUpdate, trespassable_spawn_listener);
+        app.add_systems(Update, (tilemap::spawn_tile_collision, update_unit_grid, tilemap::spawn_tile_tree, tilemap::update_animated_trees));
+        app.add_systems(PreUpdate, trespassable_spawn_listener);
         app.add_systems(PreUpdate, sizif);
         app.register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner");
 
