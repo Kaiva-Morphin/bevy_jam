@@ -1,9 +1,12 @@
 use bevy::{math::{ivec2, uvec2, vec2}, prelude::*, utils::{HashMap, HashSet}};
 use bevy_ecs_ldtk::prelude::*;
-use bevy_rapier2d::{dynamics::RigidBody, geometry::{Collider, Friction}};
+use bevy_rapier2d::{dynamics::RigidBody, geometry::{Collider, Friction}, prelude::{CollisionGroups, Group}};
 use rand::Rng;
 
-use crate::core::functions::TextureAtlasLayoutHandles;
+use crate::{core::functions::TextureAtlasLayoutHandles, player::systems::STRUCTURES_CG};
+
+#[derive(Component)]
+pub struct Structure;
 
 pub fn pre_setup(
     mut commands: Commands,
@@ -335,7 +338,14 @@ pub fn spawn_tile_collision(
                                     * grid_size as f32
                                     / 2.,
                             ))
-                            .insert(RigidBody::Fixed)
+                            .insert((
+                                RigidBody::Fixed,
+                                Structure,
+                                CollisionGroups::new(
+                                    Group::from_bits(STRUCTURES_CG).unwrap(),
+                                    Group::ALL,
+                                ),
+                            ))
                             .insert(Friction::new(1.0))
                             .insert(Transform::from_xyz(
                                 (wall_rect.left + wall_rect.right + 1) as f32 * grid_size as f32

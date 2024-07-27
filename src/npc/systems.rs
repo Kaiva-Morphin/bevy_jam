@@ -5,7 +5,7 @@ use bevy_rapier2d::prelude::*;
 use rand::{thread_rng, Rng};
 
 use crate::{
-    characters::animation::*, core::functions::TextureAtlasLayoutHandles, map::{plugin::{EntitySpawner, TrespassableCells}, tilemap::TransformToGrid}, player::{components::Player, systems::{PlayerController, BULLET_CG, LAT_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, systems::DayCycle
+    characters::animation::*, core::functions::TextureAtlasLayoutHandles, map::{plugin::{EntitySpawner, TrespassableCells}, tilemap::{Structure, TransformToGrid}}, player::{components::Player, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, systems::DayCycle
 };
 
 use super::{components::*, pathfinder};
@@ -27,33 +27,24 @@ pub fn spawn_civilian(
     layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
 ) {
     let entity = spawn_civilian_animation_bundle(&mut commands, asset_server, layout_handles);
-    let child = commands.spawn((
-        Collider::ball(4.),
-        CollisionGroups::new(
-            Group::from_bits(NPC_CG).unwrap(),
-            Group::from_bits(STRUCTURES_CG | NPC_CG).unwrap()
-        ),
-    )).id();
     commands.entity(entity).insert((
         TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
         RigidBody::Dynamic,
         Velocity::zero(),
         Civilian,
-        ActiveCollisionTypes::all(),
+        Sleeping::disabled(),
         LockedAxes::ROTATION_LOCKED_Z,
-        ActiveEvents::COLLISION_EVENTS,
-        Sensor,
         Collider::ball(4.5),
         CollisionGroups::new(
-            Group::from_bits(LAT_CG).unwrap(),
+            Group::from_bits(NPC_CG).unwrap(),
             Group::from_bits(PLAYER_CG).unwrap()
         ),
         NpcVelAccum {v: Vec2::ZERO},
         NpcPath {path: None},
         NpcState::Chill,
-        ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
+        ChillTimer {timer: Timer::new(Duration::from_secs(1), TimerMode::Repeating)},
         AttackTimer {timer: Timer::new(Duration::from_secs_f32(0.5), TimerMode::Repeating)},
-    )).add_child(child);
+    ));
 }
 
 pub fn manage_civilians(
@@ -85,7 +76,7 @@ pub fn manage_civilians(
         if last_seen_entity == player_entity && length < SPOT_DIST {
             player_in_sight = true;
         }
-        // println!("{:?}", civ_state);
+        // println!("{:?} {}", civ_state, player_in_sight);
         match *civ_state {
             NpcState::Look => {},
             NpcState::Dead => {},
@@ -167,7 +158,6 @@ pub fn manage_civilians(
                 }
                 
                 if let Some(path) = &civ_path.path {
-                    if !stop {
                     for id in 0..path.len() - 1 {
                         let p0 = transformer.to_world(path[id]);
                         let p1 = transformer.to_world(path[id + 1]);
@@ -195,13 +185,21 @@ pub fn manage_civilians(
                         vel_accum.v = vel_accum.v.normalize() * CIV_MAXSPEED
                     }
                     civ_controller.linvel = vel_accum.v;
-                    }
                 } else {
+                    civ_controller.linvel = Vec2::ZERO;
                     if civ_pos.distance(player_pos) > THRESHOLD {
                         *civ_state = NpcState::Chill
                     } else {
-                        *civ_state = NpcState::Escape
+                        if day_cycle.is_night {
+                            *civ_state = NpcState::Escape
+                        } else {
+                            *civ_state = NpcState::Chase
+                        }
                     }
+                }
+                if stop {
+                    civ_controller.linvel = Vec2::ZERO;
+                    animation_controller.play_idle_priority(1);
                 }
             }
         }
@@ -217,37 +215,27 @@ pub fn spawn_hunter(
     layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
 ) {
     let entity = spawn_hunter_animation_bundle(commands, asset_server, layout_handles);
-    let child = commands.spawn((
-        Collider::ball(4.),
-        CollisionGroups::new(
-            Group::from_bits(NPC_CG).unwrap(),
-            Group::from_bits(STRUCTURES_CG | NPC_CG).unwrap(),
-        ),
-    )).id();
     commands.entity(entity).insert((
         (
             Name::new("Hunter"),
             RigidBody::Dynamic,
             TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
             VisibilityBundle::default(),
-            Collider::ball(4.5)
+            Collider::ball(4.5),
+            Sleeping::disabled(),
         ),
         Hunter,
         LockedAxes::ROTATION_LOCKED_Z,
         NpcVelAccum {v: Vec2::ZERO},
         NpcPath {path: None},
         Velocity::zero(),
-        (CollisionGroups::new(
-            Group::from_bits(LAT_CG).unwrap(),
-            Group::from_bits(PLAYER_CG).unwrap()
-        ),
-        ActiveCollisionTypes::all(),
-        ActiveEvents::COLLISION_EVENTS,
-        Sensor,
+        CollisionGroups::new(
+            Group::from_bits(NPC_CG).unwrap(),
+            Group::from_bits(PLAYER_CG).unwrap(),
         ),
         HunterTimer { timer: Timer::new(Duration::from_secs_f32(HUNTER_TIMER), TimerMode::Repeating) },
         NpcState::Chill,
-        ChillTimer {timer: Timer::new(Duration::from_secs(2), TimerMode::Repeating)},
+        ChillTimer {timer: Timer::new(Duration::from_secs(1), TimerMode::Repeating)},
         PlayerLastPos {pos: IVec2::ZERO},
     )).with_children(|commands| {commands.spawn((
         PartType::Body{variant: 0, variants: 1},
@@ -259,7 +247,7 @@ pub fn spawn_hunter(
             layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(16, 20), 7, 3, Some(uvec2(1, 1)), None)),
             index: 2
         }
-    ));}).add_child(child);
+    ));});
 }
 
 pub fn manage_hunters(
@@ -334,7 +322,7 @@ pub fn manage_hunters(
                         Collider::cuboid(3., 3.),
                         CollisionGroups::new(
                             Group::from_bits(BULLET_CG).unwrap(),
-                            Group::from_bits(PLAYER_CG).unwrap()
+                            Group::from_bits(PLAYER_CG | STRUCTURES_CG).unwrap()
                         ),
                         LockedAxes::ROTATION_LOCKED_Z,
                         Velocity {
@@ -344,7 +332,7 @@ pub fn manage_hunters(
                         DespawnTimer { timer: Timer::new(Duration::from_secs(6), TimerMode::Once) },
                         Projectile,
                         Sensor,
-                        // ActiveEvents::COLLISION_EVENTS,
+                        ActiveEvents::COLLISION_EVENTS,
                         Sleeping::disabled(),
                     ));
                 }
@@ -491,6 +479,7 @@ pub fn process_collisions(
     mut hunters: Query<&mut NpcState, (With<Hunter>, Without<Civilian>)>,
     mut civilians: Query<&mut NpcState, With<Civilian>>,
     projectiles: Query<&Projectile>,
+    structures: Query<&Structure>,
     day_cycle: Res<DayCycle>,
 ) {
     let (player_entity, mut player) = player.single_mut();
@@ -525,6 +514,8 @@ pub fn process_collisions(
                         player.hp -= 10;
                     }
                 }
+            } else if let Ok(_) = structures.get(sender_entity) {
+                commands.entity(player_entity).remove::<Sensor>();
             }
         }
     }
@@ -545,7 +536,7 @@ pub fn entity_spawner(
         if spawner.timer.finished() {
             let spawner_pos = spawner_gpos.translation().xy();
             if rand.gen_bool(0.5) {
-                if npcs_on_map.civilians < 0 {
+                if npcs_on_map.civilians < 1 {
                     spawn_civilian(&mut commands, &asset_server, spawner_pos, &mut layout_handles);
                     npcs_on_map.civilians += 1;
                 }

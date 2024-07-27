@@ -1,6 +1,6 @@
-use bevy::prelude::*;
+use bevy::{math::uvec2, prelude::*};
 
-use crate::core::post_processing::PostProcessUniform;
+use crate::core::{functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform};
 
 pub const TRANSLATION_DURATION: f32 = 5.0;
 pub const DAY_DURATION: f32 = 10.0;
@@ -83,4 +83,38 @@ pub fn pause_game(
             GameState::Pause => next_state.set(GameState::InGame),
         }
     }
+}
+
+pub fn spawn_ui(
+    mut commands: Commands,
+    mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
+    asset_server: Res<AssetServer>
+) {
+    commands.spawn((
+        NodeBundle {
+            style: Style {
+                width: Val::Percent(100.),
+                height: Val::Percent(100. / 4.78),
+                position_type: PositionType::Absolute,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::End,
+                bottom: Val::Px(0.),
+                ..default()
+            },
+            ..default()
+        },
+        Name::new("UI"),
+    )).with_children(|parent| {
+        let w = 70.;
+        parent.spawn(ImageBundle {
+            style: Style {
+                width: Val::Percent(w),
+                height: Val::Percent(w * 0.2 * 4.78),
+                // right: Val::Percent(50.),                
+                ..default()
+            },
+            image: UiImage::new(asset_server.load("ui/new_ui.png")),
+            ..default()
+        });
+    });
 }

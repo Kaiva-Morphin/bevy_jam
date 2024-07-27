@@ -17,7 +17,6 @@ pub const PLAYER_CG: u32 = 0b0000_0000_0000_0001;
 pub const NPC_CG: u32 = 0b0000_0000_0000_0010;
 pub const STRUCTURES_CG: u32 = 0b0000_0000_0000_0100;
 pub const BULLET_CG: u32 = 0b0000_0000_0000_1000;
-pub const LAT_CG: u32 = 0b0000_0000_0001_0000;
 
 #[derive(Component)]
 pub struct PlayerController{
@@ -57,12 +56,15 @@ pub fn spawn_player(
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED_Z,
         Collider::ball(4.),
-        // ActiveCollisionTypes::all(),
         ActiveEvents::COLLISION_EVENTS,
         Velocity::zero(),
         PlayerController::default(),
         DashTimer {timer: Timer::new(Duration::from_secs_f32(0.35), TimerMode::Repeating)},
-        Sleeping::disabled()
+        Sleeping::disabled(),
+        CollisionGroups::new(
+            Group::from_bits(PLAYER_CG).unwrap(),
+            Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG).unwrap()
+        ),
     )).with_children(|commands| {commands.spawn((
         PartType::Body{variant: 0, variants: 1},
         SpriteBundle{
@@ -120,26 +122,17 @@ pub fn player_controller(
             *dash_dir = input_dir;
             if day_cycle.is_night {
                 commands.entity(player_entity).insert(
-                    CollisionGroups::new(
+                    (CollisionGroups::new(
                         Group::from_bits(PLAYER_CG).unwrap(),
-                        Group::from_bits(STRUCTURES_CG | LAT_CG).unwrap()
+                        Group::from_bits(STRUCTURES_CG | NPC_CG).unwrap()
                     ),
+                    Sensor,)
                 );
             } else {
-                // commands.entity(player_entity).insert(
-                //     CollisionGroups::new(
-                //         Group::from_bits(PLAYER_CG).unwrap(),
-                //         Group::from_bits(STRUCTURES_CG).unwrap()
-                //     ),
-                // );
-                println!("я ебал рапиру в рот {:?}", CollisionGroups::new(
-                    Group::NONE,
-                    Group::NONE
-                ));
                 commands.entity(player_entity).insert(
                     CollisionGroups::new(
-                        Group::NONE,
-                        Group::NONE
+                        Group::from_bits(PLAYER_CG).unwrap(),
+                        Group::from_bits(STRUCTURES_CG).unwrap()
                     ),
                 );
             }
@@ -160,8 +153,8 @@ pub fn player_controller(
             commands.entity(player_entity).insert(
             CollisionGroups::new(
                 Group::from_bits(PLAYER_CG).unwrap(),
-                Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG | LAT_CG).unwrap()
-            ));
+                Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG).unwrap()
+            )).remove::<Sensor>();
         }
     }
 }
