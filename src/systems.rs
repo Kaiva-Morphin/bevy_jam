@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::{math::uvec2, prelude::*};
 
 use crate::core::{functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform};
@@ -19,9 +21,9 @@ pub fn update_daycycle(
     mut post_process: Query<&mut PostProcessUniform>,
     time: Res<Time>,
 ) {
-    cycle.daytime = 0.;
-    cycle.is_night = false;
-    return;
+    // cycle.daytime = 0.;
+    // cycle.is_night = false;
+    // return;
     let delta = time.delta();
     if cycle.is_translating {
         cycle.translation_timer.tick(delta);

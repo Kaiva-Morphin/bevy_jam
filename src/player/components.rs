@@ -2,14 +2,17 @@ use bevy::prelude::*;
 
 #[derive(Component, Default)]
 pub struct Player {
-    pub hp: i32,
-    pub xp: i32,
-    pub score: i32,
+    pub hp: f32,
+    pub xp: f32,
+    pub score: f32,
     pub max_speed: f32,
     pub accumulation_grain: f32,
-    pub get_hit: u32,
-} // armor (phys res); speed; hp gain; xp gain; max hp;
-// todo: add get dmg fn -> play hurt anim -= hp
+    pub phys_res: f32,
+    pub hp_gain: f32,
+    pub xp_gain: f32,
+    pub max_hp: f32,
+} 
+// armor (phys res); speed; hp gain; xp gain; max hp;
 
 #[derive(Component)]
 pub struct DashTimer {
@@ -17,6 +20,11 @@ pub struct DashTimer {
 }
 
 #[derive(Event)]
-pub struct GetHit {
-    pub typ
+pub struct HitPlayer {
+    pub dmg_type: u8,
+}
+
+#[derive(Event)]
+pub struct KillNpc {
+    pub npc_type: u8,
 }

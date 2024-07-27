@@ -39,12 +39,6 @@ pub enum NpcState {
     Dead,
 }
 
-#[derive(Resource, Default)]
-pub struct NpcsOnMap {
-    pub hunters: u32,
-    pub civilians: u32,
-}
-
 #[derive(Component)]
 pub struct ChillTimer {
     pub timer: Timer
