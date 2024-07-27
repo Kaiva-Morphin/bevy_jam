@@ -8,13 +8,14 @@ use crate::{
     characters::animation::*, core::functions::TextureAtlasLayoutHandles, 
     map::{plugin::{EntitySpawner, TrespassableCells}, 
     tilemap::{Structure, TransformToGrid}}, 
-    player::{components::Player, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, 
+    player::{components::{HitPlayer, KillNpc, Player}, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, 
     stuff::{spawn_angry_particle, spawn_cililian_body, spawn_hunter_body, spawn_question_particle, spawn_warn_particle}, systems::DayCycle
 };
 
 use super::{components::*, pathfinder};
 
 const SPOT_DIST: f32 = 200.0;
+const SPOT_DIST_CIV: f32 = 100.0;
 const THRESHOLD: f32 = 100.0;
 const UPP_THRESHOLD: f32 = THRESHOLD * 2.0;
 const CIV_MAXSPEED: f32 = 40.0;
@@ -65,6 +66,7 @@ pub fn manage_civilians(
     rapier_context: Res<RapierContext>,
     mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
     asset_server: Res<AssetServer>,
+    mut hit_player: EventWriter<HitPlayer>,
 ) {
     let (player_transform, player_entity, mut player) = player_data.single_mut();
     let player_pos = player_transform.translation.xy();
@@ -83,14 +85,20 @@ pub fn manage_civilians(
         let length = direction.length();
         let mut player_in_sight = false;
         if let Some(last_seen_entity) = raycast(civ_pos, direction / length, length, &rapier_context) {
-        if last_seen_entity == player_entity && length < SPOT_DIST {
+        if last_seen_entity == player_entity && length < SPOT_DIST_CIV {
             player_in_sight = true;
         }
+        // println!("{:?} {}", civ_state, player_in_sight);
         match *civ_state {
             NpcState::Look => {},
             NpcState::Dead => {
-                spawn_cililian_body(&mut commands, &mut layout_handles,&asset_server, civ_pos.extend(0.));
-                commands.entity(civ_entity).despawn_recursive();
+                attack_timer.timer.tick(Duration::from_secs_f32(dt));
+                animation_controller.play_hurt();
+                commands.entity(civ_entity).remove::<Collider>();
+                if attack_timer.timer.finished() {
+                    spawn_cililian_body(&mut commands, &mut layout_handles, &asset_server, civ_pos.extend(0.));
+                    commands.entity(civ_entity).despawn_recursive();
+                }
             },
             NpcState::Attack => {
                 particle_timer.timer.tick(Duration::from_secs_f32(dt));
@@ -103,7 +111,7 @@ pub fn manage_civilians(
                 attack_timer.timer.tick(Duration::from_secs_f32(dt));
                 if attack_timer.timer.finished() {
                     if player_pos.distance(civ_pos) < 16. {
-                        player.hp -= 10;
+                        hit_player.send(HitPlayer { dmg_type: 1,});
                     }
                     *civ_state = NpcState::Chase;
                     attack_timer.timer.set_elapsed(Duration::from_secs(0))
@@ -113,7 +121,6 @@ pub fn manage_civilians(
                 let mut stop = false;
                 if state == NpcState::Chill {
                     animation_controller.disarm();
-                    
                     animation_controller.play_idle_priority(1);
 
                     if civ_path.path.is_none() {
@@ -375,8 +382,13 @@ pub fn manage_hunters(
             }
             }
             NpcState::Dead => {
-                spawn_hunter_body(&mut commands, &mut atlas_handles, &asset_server, hunter_pos.extend(0.));
-                commands.entity(hunter_entity).despawn_recursive();
+                hunter_timer.timer.tick(Duration::from_secs_f32(dt));
+                animation_controller.play_hurt();
+                commands.entity(hunter_entity).remove::<Collider>();
+                if hunter_timer.timer.finished() {
+                    spawn_hunter_body(&mut commands, &mut atlas_handles, &asset_server, hunter_pos.extend(0.));
+                    commands.entity(hunter_entity).despawn_recursive();
+                }
             }
             state => {
                 if state == NpcState::Chill {
@@ -502,14 +514,16 @@ pub fn manage_projectiles(
 pub fn process_collisions(
     mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
-    mut player: Query<(Entity, &mut Player)>,
+    mut player: Query<(Entity, &Player)>,
     mut hunters: Query<&mut NpcState, (With<Hunter>, Without<Civilian>)>,
     mut civilians: Query<&mut NpcState, With<Civilian>>,
     projectiles: Query<&Projectile>,
     structures: Query<&Structure>,
     day_cycle: Res<DayCycle>,
+    mut hit_player: EventWriter<HitPlayer>,
+    mut kill_npc: EventWriter<KillNpc>,
 ) {
-    let (player_entity, mut player) = player.single_mut();
+    let (player_entity, player) = player.single_mut();
     for collision_event in collision_events.read() {
         if let CollisionEvent::Started(reciever_entity, sender_entity, _) = collision_event {
             // println!("{:?}", collision_event);
@@ -517,28 +531,27 @@ pub fn process_collisions(
             let sender_entity = *sender_entity;
             if let Ok(_) = projectiles.get(sender_entity) {
                 if *reciever_entity == player_entity {
-                    // todo: play hurt anim
-                    player.hp -= 10;
+                    hit_player.send(HitPlayer { dmg_type: 0});
                 }
                 commands.entity(sender_entity).despawn();
             } else if let Ok(mut state) = civilians.get_mut(sender_entity) {
                 if day_cycle.is_night {
                     // kill civilian
                     *state = NpcState::Dead;
+                    kill_npc.send(KillNpc { npc_type: 0 });
                 } else {
                     if *reciever_entity == player_entity {
-                        // todo: play hurt anim
-                        player.hp -= 10;
+                        hit_player.send(HitPlayer { dmg_type: 1});
                     }
                 }
             } else if let Ok(mut state) = hunters.get_mut(sender_entity) {
                 if day_cycle.is_night {
                     // kill hunter
                     *state = NpcState::Dead;
+                    kill_npc.send(KillNpc { npc_type: 1 });
                 } else {
                     if *reciever_entity == player_entity {
-                        // todo: play hurt anim
-                        player.hp -= 10;
+                        hit_player.send(HitPlayer { dmg_type: 2});
                     }
                 }
             } else if let Ok(_) = structures.get(sender_entity) {
@@ -551,7 +564,8 @@ pub fn process_collisions(
 pub fn entity_spawner(
     mut commands: Commands,
     mut spawners: Query<(&mut EntitySpawner, &GlobalTransform)>,
-    mut npcs_on_map: ResMut<NpcsOnMap>,
+    civilians: Query<&Civilian>,
+    hunters: Query<&Hunter>,
     mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
     asset_server: Res<AssetServer>,
     time: Res<Time>,
@@ -563,21 +577,16 @@ pub fn entity_spawner(
         if spawner.timer.finished() {
             let spawner_pos = spawner_gpos.translation().xy();
             if rand.gen_bool(0.5) {
-                if npcs_on_map.civilians < 1 {
+                if civilians.iter().len() < 1 {
                     spawn_civilian(&mut commands, &asset_server, spawner_pos, &mut layout_handles);
-                    npcs_on_map.civilians += 1;
                 }
             } else {
-                if npcs_on_map.hunters < 1 {
+                if hunters.iter().len() < 1 {
                     spawn_hunter(&mut commands, &asset_server, spawner_pos, &mut layout_handles);
-                    npcs_on_map.hunters += 1;
                 }
             }
         }
     }
-    // if let Ok(t) = spawner.get_single() {
-    //     println!("{:?}", transformer.from_world_i32(t.translation().xy()))
-    // }
 }
 
 fn raycast(

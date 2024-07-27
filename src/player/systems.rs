@@ -5,6 +5,7 @@ use bevy_rapier2d::prelude::*;
 
 use crate::characters::animation::{AnimationController, PartType};
 use crate::core::camera::plugin::CameraFollow;
+use crate::sounds::components::PlaySoundEvent;
 use crate::systems::DayCycle;
 use bevy::math::{uvec2, vec2};
 use bevy_inspector_egui::bevy_egui::EguiContexts;
@@ -51,7 +52,8 @@ pub fn spawn_player(
         TransformBundle::from_transform(Transform::from_xyz(16., 16., 0.)),
         Name::new("Player"),
         CameraFollow{order: 0, speed: 10.},
-        Player {hp: 100, max_hp: 100, max_speed: 80., accumulation_grain: 600., get_hit: 0, ..default()},
+        Player {hp: 100., xp: 0., score: 0., max_speed: 80., accumulation_grain: 600., 
+            phys_res: 0., hp_gain: 1., xp_gain: 1., max_hp: 100. },
         AnimationController::default(),
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED_Z,
@@ -86,6 +88,7 @@ pub fn player_controller(
     day_cycle: Res<DayCycle>,
     time: Res<Time>,
     mut dash_dir: Local<Vec2>,
+    mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
     let (mut character_controller, mut controller,
         mut animation_controller, mut dash_timer,
@@ -118,6 +121,7 @@ pub fn player_controller(
         }
     
         if keyboard.just_released(KeyCode::ShiftLeft) {
+            play_sound.send(PlaySoundEvent::Dash);
             dash_timer.timer.tick(Duration::from_secs_f32(dt));
             *dash_dir = input_dir;
             if day_cycle.is_night {
@@ -155,6 +159,42 @@ pub fn player_controller(
                 Group::from_bits(PLAYER_CG).unwrap(),
                 Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG).unwrap()
             )).remove::<Sensor>();
+        }
+    }
+}
+
+pub fn hit_player(
+    mut hit_player: EventReader<HitPlayer>,
+    mut player: Query<(&mut Player, &mut AnimationController)>,
+) {
+    let (mut player, mut animation_controller) = player.single_mut();
+    for hit in hit_player.read() {
+        animation_controller.play_hurt();
+        if hit.dmg_type == 0 { // proj
+            player.hp -= 10. * (1. - player.phys_res)
+        } else if hit.dmg_type == 1 { // civ
+            player.hp -= 5. * (1. - player.phys_res)
+        } else if hit.dmg_type == 2 { // hun
+            player.hp -= 15. * (1. - player.phys_res)
+        }
+    }
+    if player.hp < 0. {
+        println!("PIZDA")
+    }
+}
+
+pub fn kill_npc(
+    mut kill_npc: EventReader<KillNpc>,
+    mut player: Query<&mut Player>,
+) {
+    let mut player = player.single_mut();
+    for kill in kill_npc.read() {
+        player.hp = (player.hp + player.hp_gain).clamp(0.0, player.max_hp);
+        player.xp += player.xp_gain;
+        if kill.npc_type == 0 { // civ
+            player.score += 100.;
+        } else if kill.npc_type == 1 { // hun
+            player.score += 500.;
         }
     }
 }
