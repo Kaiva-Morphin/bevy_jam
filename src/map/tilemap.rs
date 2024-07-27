@@ -1,6 +1,7 @@
-use bevy::{math::{ivec2, uvec2, vec2}, prelude::*, utils::{HashMap, HashSet}};
+use bevy::{math::{ivec2, uvec2, vec2, vec3}, prelude::*, utils::{HashMap, HashSet}};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::{dynamics::RigidBody, geometry::{Collider, Friction}, prelude::{CollisionGroups, Group}};
+use noise::{core::perlin, NoiseFn, Perlin};
 use rand::Rng;
 
 use crate::{core::functions::TextureAtlasLayoutHandles, player::systems::STRUCTURES_CG};
@@ -98,12 +99,22 @@ pub struct AnimatedTreePart(u8);
 
 pub fn update_animated_trees(
     mut commands: Commands,
-    mut tree_q: Query<(&mut GlobalTransform, &AnimatedTree)>
+    mut tree_q: Query<(&GlobalTransform, &mut Transform, &AnimatedTreePart)>,
+    time: Res<Time>,
+    mut perlin: Local<Option<Perlin>>
 ){
-    for (mut transform, tree) in tree_q.iter_mut() {
-        let pos = transform.translation().xy();
-        
-
+    if perlin.is_none(){*perlin = Some(Perlin::new(rand::thread_rng().gen::<u32>()))}
+    let t: f32 = time.elapsed_seconds() * 0.1;
+    for (glob, mut transform, tree) in tree_q.iter_mut() {
+        if tree.0 == 0 {continue;}
+        let offset = vec3(0., match tree.0 {
+            1 => 6.,
+            2 => 16.,
+            _ => 26.
+        }, 0.);
+        let arr = (offset + glob.translation() + vec3(10., 3., 0.1) * t).to_array().map(|x| x as f64);
+        let v = perlin.unwrap().get(arr);
+        transform.rotation = Quat::from_rotation_z(v as f32 * 0.1);
     }
 }
 
@@ -127,7 +138,7 @@ pub fn spawn_tile_tree(
                         index: r.gen_range(1..3) + 9
                     },
                     AnimatedTreePart(0)
-                )).insert(Transform::from_xyz(0., -3., 10.).with_rotation(Quat::from_rotation_x(0.1))).with_children(|cmd|{
+                )).insert(Transform::from_xyz(0., -3., 10.).with_rotation(Quat::from_rotation_x(0.2))).with_children(|cmd|{
                     cmd.spawn((
                         AnimatedTreePart(1),
                         SpriteBundle{
@@ -138,7 +149,7 @@ pub fn spawn_tile_tree(
                             layout: layout_handles.add_or_load(&asset_server, "Tree", TextureAtlasLayout::from_grid(uvec2(28, 17), 3, 4, Some(uvec2(1, 1)), None)),
                             index: r.gen_range(1..3) + 6
                         },
-                    )).insert(Transform::from_xyz(0., 6., 0.)).with_children(|cmd|{
+                    )).insert(Transform::from_xyz(0., 6., 0.).with_rotation(Quat::from_rotation_y(0.2))).with_children(|cmd|{
                         cmd.spawn((
                             AnimatedTreePart(2),
                             SpriteBundle{
@@ -149,7 +160,7 @@ pub fn spawn_tile_tree(
                                 layout: layout_handles.add_or_load(&asset_server, "Tree", TextureAtlasLayout::from_grid(uvec2(28, 17), 3, 4, Some(uvec2(1, 1)), None)),
                                 index: r.gen_range(1..3) + 3
                             },
-                        )).insert(Transform::from_xyz(0., 10., 0.)).with_children(|cmd|{
+                        )).insert(Transform::from_xyz(0., 10., 0.).with_rotation(Quat::from_rotation_y(0.2))).with_children(|cmd|{
                             cmd.spawn((
                                 AnimatedTreePart(3),
                                 SpriteBundle{
@@ -160,7 +171,7 @@ pub fn spawn_tile_tree(
                                     layout: layout_handles.add_or_load(&asset_server, "Tree", TextureAtlasLayout::from_grid(uvec2(28, 17), 3, 4, Some(uvec2(1, 1)), None)),
                                     index: r.gen_range(1..3)
                                 },
-                            )).insert(Transform::from_xyz(0., 10., 0.));
+                            )).insert(Transform::from_xyz(0., 10., 0.).with_rotation(Quat::from_rotation_y(0.05)));
                         });
                     });
                 });

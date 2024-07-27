@@ -44,6 +44,10 @@ impl CameraController{
     }
 }
 
+pub const TARGET_WIDTH : f32 = 400.;
+pub const TARGET_HEIGHT : f32 = 300.;
+pub const TARGET_ASPECT : f32 = TARGET_WIDTH / TARGET_HEIGHT;
+
 fn setup_camera(
     mut commands: Commands,
 ){
@@ -55,8 +59,8 @@ fn setup_camera(
             },
             projection: OrthographicProjection {
                 scaling_mode: ScalingMode::AutoMin {
-                    min_width: 400.0,
-                    min_height: 300.0,
+                    min_width: TARGET_WIDTH,
+                    min_height: TARGET_HEIGHT,
                 },
                 near: -800.,
                 far: 800.,

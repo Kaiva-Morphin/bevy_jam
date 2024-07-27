@@ -42,7 +42,6 @@ fn main() {
         NPCPlugin,
         CharacterAnimationPlugin,
     ))
-    .add_systems(Startup, spawn_ui)
     .add_systems(Update, (update_daycycle.run_if(in_state(GameState::InGame)), pause_game))
     .add_systems(Update, simple_anim_update.run_if(in_state(GameState::InGame)))
     .run();

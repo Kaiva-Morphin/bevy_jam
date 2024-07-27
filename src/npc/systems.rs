@@ -76,7 +76,6 @@ pub fn manage_civilians(
         if last_seen_entity == player_entity && length < SPOT_DIST {
             player_in_sight = true;
         }
-        println!("{:?} {}", civ_state, player_in_sight);
         match *civ_state {
             NpcState::Look => {},
             NpcState::Dead => {},
@@ -199,7 +198,6 @@ pub fn manage_civilians(
                     }
                 }
                 if stop {
-                    warn!("OVERRIDE!");
                     civ_controller.linvel = Vec2::ZERO;
                     animation_controller.play_idle_priority(1);
                 }
