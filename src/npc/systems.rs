@@ -5,7 +5,11 @@ use bevy_rapier2d::prelude::*;
 use rand::{thread_rng, Rng};
 
 use crate::{
-    characters::animation::*, core::functions::TextureAtlasLayoutHandles, map::{plugin::{EntitySpawner, TrespassableCells}, tilemap::{Structure, TransformToGrid}}, player::{components::Player, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, systems::DayCycle
+    characters::animation::*, core::functions::TextureAtlasLayoutHandles, 
+    map::{plugin::{EntitySpawner, TrespassableCells}, 
+    tilemap::{Structure, TransformToGrid}}, 
+    player::{components::Player, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, 
+    stuff::{spawn_angry_particle, spawn_cililian_body, spawn_hunter_body, spawn_question_particle, spawn_warn_particle}, systems::DayCycle
 };
 
 use super::{components::*, pathfinder};
@@ -44,12 +48,14 @@ pub fn spawn_civilian(
         NpcState::Chill,
         ChillTimer {timer: Timer::new(Duration::from_secs(1), TimerMode::Repeating)},
         AttackTimer {timer: Timer::new(Duration::from_secs_f32(0.5), TimerMode::Repeating)},
+        ParticleTimer {timer: Timer::new(Duration::from_secs_f32(1.), TimerMode::Repeating)},
     ));
 }
 
 pub fn manage_civilians(
+    mut commands: Commands,
     mut civilians_data: Query<(&Transform, &mut Velocity, &mut NpcVelAccum, &mut NpcPath, &mut NpcState,
-        &mut ChillTimer, &mut AnimationController, &mut AttackTimer), With<Civilian>>,
+        &mut ChillTimer, &mut AnimationController, &mut AttackTimer, &mut ParticleTimer, Entity), With<Civilian>>,
     mut player_data: Query<(&Transform, Entity, &mut Player)>,
     time: Res<Time>,
     day_cycle: Res<DayCycle>,
@@ -57,6 +63,8 @@ pub fn manage_civilians(
     trespassable: Res<TrespassableCells>,
     mut gizmos: Gizmos,
     rapier_context: Res<RapierContext>,
+    mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
+    asset_server: Res<AssetServer>,
 ) {
     let (player_transform, player_entity, mut player) = player_data.single_mut();
     let player_pos = player_transform.translation.xy();
@@ -66,7 +74,9 @@ pub fn manage_civilians(
     for (civ_transform, mut civ_controller,
         mut vel_accum , mut civ_path,
         mut civ_state, mut chill_timer,
-        mut animation_controller, mut attack_timer) in civilians_data.iter_mut() {
+        mut animation_controller,
+        mut attack_timer, mut particle_timer,
+        civ_entity) in civilians_data.iter_mut() {
         let civ_pos = civ_transform.translation.xy();
         let civ_ipos = transformer.from_world_i32(civ_pos);
         let direction = player_pos - civ_pos;
@@ -76,11 +86,18 @@ pub fn manage_civilians(
         if last_seen_entity == player_entity && length < SPOT_DIST {
             player_in_sight = true;
         }
-        // println!("{:?} {}", civ_state, player_in_sight);
+        println!("{:?} {}", civ_state, player_in_sight);
         match *civ_state {
             NpcState::Look => {},
-            NpcState::Dead => {},
+            NpcState::Dead => {
+                spawn_cililian_body(&mut commands, &asset_server, civ_pos.extend(0.));
+                commands.entity(civ_entity).despawn_recursive();
+            },
             NpcState::Attack => {
+                particle_timer.timer.tick(Duration::from_secs_f32(dt));
+                if particle_timer.timer.finished() {
+                    spawn_angry_particle(&mut commands, &mut layout_handles, &asset_server, civ_pos.extend(0.));
+                }
                 if attack_timer.timer.elapsed_secs() == 0. {
                     animation_controller.play_civil_attack();
                 }
@@ -101,18 +118,17 @@ pub fn manage_civilians(
                     if civ_path.path.is_none() {
                         chill_timer.timer.tick(Duration::from_secs_f32(dt));
                         if chill_timer.timer.finished() {
-                            let end = civ_ipos + IVec2::new(rng.gen_range(-4..4), rng.gen_range(-4..4));
+                            let end = civ_ipos + IVec2::new(rng.gen_range(-2..2), rng.gen_range(-2..2));
                             if trespassable.is_trespassable(&end) {
                                 civ_path.path = pathfinder(civ_ipos, end, &trespassable, &transformer, state, false);
                             }
                         }
                     }
                     if player_in_sight {
+                        spawn_warn_particle(&mut commands, &mut layout_handles, &asset_server, civ_pos.extend(0.));
                         if day_cycle.is_night {
-                            // todo: play "!" anim
                             *civ_state = NpcState::Escape;
                         } else {
-                            // todo: play "!" anim
                             *civ_state = NpcState::Chase;
                         }
                     }
@@ -127,7 +143,10 @@ pub fn manage_civilians(
                         }
                     }
                 } else { // chase
-                    // todo: play "*" anim
+                    particle_timer.timer.tick(Duration::from_secs_f32(dt));
+                    if particle_timer.timer.finished() {
+                        spawn_angry_particle(&mut commands, &mut layout_handles, &asset_server, civ_pos.extend(0.));
+                    }
                     animation_controller.arm();
                     civ_path.path = pathfinder(civ_ipos, player_ipos, &trespassable, &transformer, state, false);
                     if player_in_sight {
@@ -135,7 +154,9 @@ pub fn manage_civilians(
                             *civ_state = NpcState::Escape;
                         }
                     } else {
+                        spawn_question_particle(&mut commands, &mut layout_handles, &asset_server, civ_pos.extend(0.));
                         *civ_state = NpcState::Chill;
+                        civ_path.path = None;
                     }
                     if player_pos.distance(civ_pos) < 16. {
                         *civ_state = NpcState::Attack;
@@ -190,10 +211,14 @@ pub fn manage_civilians(
                     if civ_pos.distance(player_pos) > THRESHOLD {
                         *civ_state = NpcState::Chill
                     } else {
-                        if day_cycle.is_night {
-                            *civ_state = NpcState::Escape
+                        if player_in_sight {
+                            if day_cycle.is_night {
+                                *civ_state = NpcState::Escape
+                            } else {
+                                *civ_state = NpcState::Chase
+                            }
                         } else {
-                            *civ_state = NpcState::Chase
+                            *civ_state = NpcState::Chill;
                         }
                     }
                 }
@@ -255,14 +280,14 @@ pub fn manage_hunters(
     asset_server: Res<AssetServer>,
     mut hunters_data: Query<(&Transform, &mut Velocity,
         &mut NpcVelAccum, &mut NpcPath, &mut HunterTimer, &mut NpcState,
-        &mut ChillTimer, &mut AnimationController, &mut PlayerLastPos), Without<Player>>,
+        &mut ChillTimer, &mut AnimationController, &mut PlayerLastPos, Entity), Without<Player>>,
     player_data: Query<(&Transform, &PlayerController, Entity), With<Player>>,
     transformer: Res<TransformToGrid>,
     trespassable: Res<TrespassableCells>,
     mut gizmos: Gizmos,
     rapier_context: Res<RapierContext>,
     time: Res<Time>,
-    mut atlas_handles: ResMut<TextureAtlasLayoutHandles>
+    mut atlas_handles: ResMut<TextureAtlasLayoutHandles>,
 ) {
     let player_data = player_data.single();
     let player_pos = player_data.0.translation.xy();
@@ -273,7 +298,8 @@ pub fn manage_hunters(
     for (hunter_transform, mut hunter_controller,
         mut vel_accum , mut hunter_path,
         mut hunter_timer, mut hunter_state, mut chill_timer,
-        mut animation_controller, mut player_last_pos) in hunters_data.iter_mut() {
+        mut animation_controller, mut player_last_pos,
+        hunter_entity) in hunters_data.iter_mut() {
         hunter_controller.linvel = Vec2::ZERO;
         let hunter_pos = hunter_transform.translation.xy();
         let hunter_ipos = transformer.from_world_i32(hunter_pos);
@@ -349,20 +375,21 @@ pub fn manage_hunters(
             }
             }
             NpcState::Dead => {
-
+                spawn_hunter_body(&mut commands, &asset_server, hunter_pos.extend(0.));
+                commands.entity(hunter_entity).despawn_recursive();
             }
             state => {
                 if state == NpcState::Chill {
                     animation_controller.play_idle_priority(1);
                     if player_in_sight {
                         *hunter_state = NpcState::Chase;
-                        // todo: add "!" anim
+                        spawn_warn_particle(&mut commands, &mut atlas_handles, &asset_server, hunter_pos.extend(0.));
                     } else {
                         if hunter_path.path.is_none() {
                             let mut rng = thread_rng();
                             chill_timer.timer.tick(Duration::from_secs_f32(dt));
                             if chill_timer.timer.finished() {
-                                let end = hunter_ipos + IVec2::new(rng.gen_range(-4..4), rng.gen_range(-4..4));
+                                let end = hunter_ipos + IVec2::new(rng.gen_range(-2..2), rng.gen_range(-2..2));
                                 if trespassable.is_trespassable(&end) {
                                     hunter_path.path = pathfinder(hunter_ipos, end, &trespassable, &transformer, state, true);
                                 }
@@ -372,11 +399,11 @@ pub fn manage_hunters(
                 } else if state == NpcState::Look {
                     if player_in_sight {
                         *hunter_state = NpcState::Chase;
-                        // todo: add "!" anim
+                        spawn_warn_particle(&mut commands, &mut atlas_handles, &asset_server, hunter_pos.extend(0.));
                     } else {
                         hunter_path.path = pathfinder(hunter_ipos, player_last_pos.pos, &trespassable, &transformer, state, true);
                         if hunter_path.path.is_none() {
-                            // todo: add "?" anim
+                            spawn_question_particle(&mut commands, &mut atlas_handles, &asset_server, hunter_pos.extend(0.));
                             *hunter_state = NpcState::Chill;
                         }
                     }

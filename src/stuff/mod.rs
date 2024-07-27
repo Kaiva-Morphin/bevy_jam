@@ -60,7 +60,7 @@ pub fn emotion_bundle(asset_server: &Res<AssetServer>, atlas_handles: &mut ResMu
             ..default()
         },
         TextureAtlas{
-            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(9, 13), 3, 3, Some(uvec2(1, 1)), None)),
+            layout: atlas_handles.add_or_load(asset_server, "Emotion", TextureAtlasLayout::from_grid(uvec2(10, 14), 3, 3, Some(uvec2(1, 1)), None)),
             index: idx
         },
     )
@@ -269,7 +269,8 @@ pub fn spawn_question_particle(
     asset_server: &Res<AssetServer>,
     pos: Vec3,
 ){
-    let max_offset = 7.;
+    let lifetime = 2.;
+    let max_offset = 2.;
     let start = pos+vec3(
         rand::random::<f32>() * max_offset * 2. - max_offset,
         rand::random::<f32>() * max_offset * 2. - max_offset,
@@ -278,19 +279,20 @@ pub fn spawn_question_particle(
     commands.spawn((
         TransformBundle::default(),
         VisibilityBundle::default(),
-        DespawnTimer::seconds(1.),
+        DespawnTimer::seconds(lifetime),
     ))
-    .insert(Transform::from_translation(vec3(20., 10., 8.) + start))
+    .insert(Transform::from_translation(vec3(0., 8., 8.) + start))
     .with_children(|commands| {
         commands.spawn((
             Name::new("Particle"),
             emotion_bundle(asset_server, layout_handles, rand::thread_rng().gen_range(0..3) + 6),
             Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5))
                 .ease_to(
-                    Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)),
+                    Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5))
+                    .with_scale(Vec3::splat(1.5)),
                     EaseFunction::ExponentialOut,
                     EasingType::Once {
-                        duration: std::time::Duration::from_secs(1),
+                        duration: std::time::Duration::from_secs_f32(lifetime),
                     },
                 )
         )).insert(
@@ -298,7 +300,7 @@ pub fn spawn_question_particle(
                 Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)),..default() },
                 EaseFunction::ExponentialOut,
                 EasingType::Once {
-                    duration: std::time::Duration::from_secs(1),
+                    duration: std::time::Duration::from_secs_f32(lifetime),
                 },
             )
         );
@@ -311,7 +313,7 @@ pub fn spawn_angry_particle(
     asset_server: &Res<AssetServer>,
     pos: Vec3,
 ){
-    let max_offset = 7.;
+    let max_offset = 2.;
     let start = pos+vec3(
         rand::random::<f32>() * max_offset * 2. - max_offset,
         rand::random::<f32>() * max_offset * 2. - max_offset,
@@ -324,7 +326,7 @@ pub fn spawn_angry_particle(
         VisibilityBundle::default(),
         DespawnTimer::seconds(1.),
     ))
-    .insert(Transform::from_translation(vec3(0., 10., 8.) + start))
+    .insert(Transform::from_translation(vec3(0., 8., 8.) + start))
     .with_children(|commands| {
         commands.spawn((
             Name::new("Particle"),
@@ -340,7 +342,7 @@ pub fn spawn_angry_particle(
         )).insert(
             Sprite{flip_x: flipped, ..default()}.ease_to(
                 Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), flip_x: flipped,..default() },
-                EaseFunction::ExponentialOut,
+                EaseFunction::ExponentialIn,
                 EasingType::Once {
                     duration: std::time::Duration::from_secs(1),
                 },
@@ -355,7 +357,8 @@ pub fn spawn_warn_particle(
     asset_server: &Res<AssetServer>,
     pos: Vec3,
 ){
-    let max_offset = 7.;
+    let lifetime = 2.;
+    let max_offset = 2.;
     let start = pos+vec3(
         rand::random::<f32>() * max_offset * 2. - max_offset,
         rand::random::<f32>() * max_offset * 2. - max_offset,
@@ -364,19 +367,20 @@ pub fn spawn_warn_particle(
     commands.spawn((
         TransformBundle::default(),
         VisibilityBundle::default(),
-        DespawnTimer::seconds(1.),
+        DespawnTimer::seconds(lifetime),
     ))
-    .insert(Transform::from_translation(vec3(10., 20., 8.) + start))
+    .insert(Transform::from_translation(vec3(0., 8., 8.) + start))
     .with_children(|commands| {
         commands.spawn((
             Name::new("Particle"),
             emotion_bundle(asset_server, layout_handles, rand::thread_rng().gen_range(0..3) + 3),
             Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5))
                 .ease_to(
-                    Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)),
+                    Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5))
+                    .with_scale(Vec3::splat(1.5)),
                     EaseFunction::ExponentialOut,
                     EasingType::Once {
-                        duration: std::time::Duration::from_secs(1),
+                        duration: std::time::Duration::from_secs_f32(lifetime),
                     },
                 )
         )).insert(
@@ -384,7 +388,7 @@ pub fn spawn_warn_particle(
                 Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), ..default() },
                 EaseFunction::ExponentialOut,
                 EasingType::Once {
-                    duration: std::time::Duration::from_secs(1),
+                    duration: std::time::Duration::from_secs_f32(lifetime),
                 },
             )
         );

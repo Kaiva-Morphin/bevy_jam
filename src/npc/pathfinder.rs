@@ -114,7 +114,7 @@ pub fn pathfinder(
                 }
             }
             NpcState::Chill => {
-                if let Some(path) = find_path_huncha(&Pos(start_ipos), &Pos(end_ipos), trespassable) {
+                if let Some(path) = find_path_goto(&Pos(start_ipos), &Pos(end_ipos), trespassable) {
                     if path.len() > 1 {
                         return Some(path.into_iter().map(|x| x.0).collect());
                     } else {

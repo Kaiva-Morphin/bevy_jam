@@ -59,3 +59,8 @@ pub struct PlayerLastPos {
 pub struct AttackTimer {
     pub timer: Timer,
 }
+
+#[derive(Component)]
+pub struct ParticleTimer {
+    pub timer: Timer,
+}
