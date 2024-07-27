@@ -59,6 +59,9 @@ fn update(
     asset_server: Res<AssetServer>,
     mut layout_handles: ResMut<TextureAtlasLayoutHandles>
 ){
+    
+    spawn_angry_particle(&mut commands, &mut layout_handles, &asset_server, vec3(-10., 10., 0.));
+    
     if keyboard.just_pressed(KeyCode::Space){
         let entity = spawn_civilian_animation_bundle(&mut commands, &asset_server, &mut layout_handles);
         commands.entity(entity).insert(PreviewCharacter);
@@ -73,7 +76,7 @@ fn update(
         if keyboard.pressed(KeyCode::KeyS){controller.turn_down()};
         if keyboard.pressed(KeyCode::KeyW){controller.turn_up()};
         if keyboard.any_pressed([KeyCode::KeyW, KeyCode::KeyA, KeyCode::KeyS, KeyCode::KeyD]){
-            controller.play_walk();
+            controller.play_walk_unlooped();
         } else {
             controller.play_idle_priority(1);
         }
@@ -185,6 +188,7 @@ fn update(
                     )
                 );
             });
+
         }
         if keyboard.pressed(KeyCode::AltLeft){
             let max_offset = 10.;
@@ -237,29 +241,7 @@ fn update(
             );
 
             let flipped = rand::thread_rng().gen_bool(0.5);
-            commands.spawn((
-                TransformBundle::default(),
-                VisibilityBundle::default(),
-                DespawnTimer::seconds(5.),
-            ))
-            .insert(Transform::from_translation(vec3(0., 10., 8.) + start).with_scale(vec3(if flipped{-1.} else {1.}, 1., 1.)))
-            .with_children(|commands| {
-                commands.spawn((
-                    Name::new("Particle"),
-                    SpriteBundle{
-                        texture: asset_server.load("particles/body_civilian.png"),
-                        ..default()
-                    },
-                )).insert(
-                    Sprite{..default()}.ease_to(
-                        Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), ..default() },
-                        EaseFunction::ExponentialIn,
-                        EasingType::Once {
-                            duration: std::time::Duration::from_secs(5),
-                        },
-                    )
-                );
-            });
+            spawn_cililian_body(&mut commands, &mut layout_handles, &asset_server, vec3(10., 0., 0.));
         }
     }
 }

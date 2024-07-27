@@ -8,8 +8,8 @@ use crate::core::functions::TextureAtlasLayoutHandles;
 #[derive(Component)]
 pub struct AnimationController{
     animation_speed: f32,
-    ticker: AnimTicker,
-    current_animation: CharacterAnimation,
+    pub ticker: AnimTicker,
+    pub current_animation: CharacterAnimation,
     dir_offset: usize,
     /*
     0 - idle, talk
@@ -17,7 +17,7 @@ pub struct AnimationController{
     2 - attack, skill
     3 - hurt
     */
-    priority: usize,
+    pub priority: usize,
     direction: usize,
     armed: bool
 }
@@ -295,7 +295,7 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: &R
 
 #[derive(Default)]
 pub struct AnimTicker{
-    frame: f32
+    pub frame: f32
 }
 
 impl AnimTicker{
@@ -549,14 +549,14 @@ pub enum FrameTime{
 // 4 - damage
 pub struct CharacterAnimation {
     frame_time: FrameTime,
-    frame_idx: Vec<usize>,
+    pub frame_idx: Vec<usize>,
     // umbrella, candle, etc
     item_offsets: Vec<Vec3>,
     item_idx: Vec<usize>,
 
     parts_offsets: Vec<Vec3>,
     looped: bool,
-    duration: f32
+    pub duration: f32
 }
 
 impl CharacterAnimation {

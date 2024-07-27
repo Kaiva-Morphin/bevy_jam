@@ -138,13 +138,14 @@ pub fn animated_knife_bundle(asset_server: &Res<AssetServer>, atlas_handles: &mu
 
 pub fn animated_soul_bundle(asset_server: &Res<AssetServer>, atlas_handles: &mut ResMut<TextureAtlasLayoutHandles>,) -> impl Bundle {
     (
-        SimpleAnimated{effect: SimpleAnimatedTexture::Soul, timer: Timer::from_seconds(0.06, TimerMode::Repeating)},
+        SimpleAnimated{effect: SimpleAnimatedTexture::Soul, timer: Timer::from_seconds(0.1, TimerMode::Repeating)},
+        DespawnTimer::seconds(0.5),
         SpriteBundle{
             texture: asset_server.load("particles/soul.png"),
             ..default()
         },
         TextureAtlas{
-            layout: atlas_handles.add_or_load(asset_server, "Soul", TextureAtlasLayout::from_grid(uvec2(10, 12), 5, 1, Some(uvec2(1, 1)), None)),
+            layout: atlas_handles.add_or_load(asset_server, "Soul", TextureAtlasLayout::from_grid(uvec2(9, 12), 5, 1, Some(uvec2(1, 1)), None)),
             index: 0
         },
     )
@@ -173,23 +174,34 @@ pub fn stake_bundle(asset_server: &Res<AssetServer>, atlas_handles: &mut ResMut<
 
 pub fn spawn_cililian_body(
     commands: &mut Commands,
+    layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
     asset_server: &Res<AssetServer>,
     pos: Vec3,
 ) -> Entity {
-    let max_offset = 10.;
+
+    let max_offset = 4.;
     let start = pos + vec3(
         rand::random::<f32>() * max_offset * 2. - max_offset,
         rand::random::<f32>() * max_offset * 2. - max_offset,
         0.
     );
-
     let flipped = rand::thread_rng().gen_bool(0.5);
+    let offset = if flipped{vec3(-2., 0., 0.)} else {vec3(2., 0., 0.)};
+    commands.spawn(animated_soul_bundle(asset_server, layout_handles))
+    .insert(Transform::from_translation(offset+vec3(0., 8., 10.) + start).ease_to(
+        Transform::from_translation(offset+start+vec3(0., 12. + rand::thread_rng().gen::<f32>() * 5., 10.)),
+        EaseFunction::ExponentialOut,
+        EasingType::Once {
+            duration: std::time::Duration::from_secs(1),
+        },
+    ));
+
     commands.spawn((
         TransformBundle::default(),
         VisibilityBundle::default(),
-        DespawnTimer::seconds(1.),
+        DespawnTimer::seconds(5.),
     ))
-    .insert(Transform::from_translation(vec3(0., 10., 8.) + start))
+    .insert(Transform::from_translation(vec3(0., 0., 8.) + start).with_scale(vec3(if flipped{-1.} else {1.}, 1., 1.)))
     .with_children(|commands| {
         commands.spawn((
             Name::new("Particle"),
@@ -197,20 +209,12 @@ pub fn spawn_cililian_body(
                 texture: asset_server.load("particles/body_civilian.png"),
                 ..default()
             },
-            Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5))
-                .ease_to(
-                    Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)),
-                    EaseFunction::ExponentialOut,
-                    EasingType::Once {
-                        duration: std::time::Duration::from_secs(1),
-                    },
-                )
         )).insert(
-            Sprite{flip_x: flipped, ..default()}.ease_to(
-                Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), flip_x: flipped,..default() },
-                EaseFunction::ExponentialOut,
+            Sprite{..default()}.ease_to(
+                Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), ..default() },
+                EaseFunction::ExponentialIn,
                 EasingType::Once {
-                    duration: std::time::Duration::from_secs(1),
+                    duration: std::time::Duration::from_secs(5),
                 },
             )
         );
@@ -219,23 +223,33 @@ pub fn spawn_cililian_body(
 
 pub fn spawn_hunter_body(
     commands: &mut Commands,
+    layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
     asset_server: &Res<AssetServer>,
     pos: Vec3,
 ) -> Entity {
-    let max_offset = 10.;
+    let max_offset = 4.;
     let start = pos + vec3(
         rand::random::<f32>() * max_offset * 2. - max_offset,
         rand::random::<f32>() * max_offset * 2. - max_offset,
         0.
     );
-
     let flipped = rand::thread_rng().gen_bool(0.5);
+    let offset = if flipped{vec3(-2., 0., 0.)} else {vec3(2., 0., 0.)};
+    commands.spawn(animated_soul_bundle(asset_server, layout_handles))
+    .insert(Transform::from_translation(offset+vec3(0., 8., 10.) + start).ease_to(
+        Transform::from_translation(offset+start+vec3(0., 12. + rand::thread_rng().gen::<f32>() * 5., 10.)),
+        EaseFunction::ExponentialOut,
+        EasingType::Once {
+            duration: std::time::Duration::from_secs(1),
+        },
+    ));
+
     commands.spawn((
         TransformBundle::default(),
         VisibilityBundle::default(),
-        DespawnTimer::seconds(1.),
+        DespawnTimer::seconds(5.),
     ))
-    .insert(Transform::from_translation(vec3(0., 10., 8.) + start))
+    .insert(Transform::from_translation(vec3(0., 0., 8.) + start).with_scale(vec3(if flipped{-1.} else {1.}, 1., 1.)))
     .with_children(|commands| {
         commands.spawn((
             Name::new("Particle"),
@@ -243,20 +257,12 @@ pub fn spawn_hunter_body(
                 texture: asset_server.load("particles/body_hunter.png"),
                 ..default()
             },
-            Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5))
-                .ease_to(
-                    Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)),
-                    EaseFunction::ExponentialOut,
-                    EasingType::Once {
-                        duration: std::time::Duration::from_secs(1),
-                    },
-                )
         )).insert(
-            Sprite{flip_x: flipped, ..default()}.ease_to(
-                Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), flip_x: flipped,..default() },
-                EaseFunction::ExponentialOut,
+            Sprite{..default()}.ease_to(
+                Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), ..default() },
+                EaseFunction::ExponentialIn,
                 EasingType::Once {
-                    duration: std::time::Duration::from_secs(1),
+                    duration: std::time::Duration::from_secs(5),
                 },
             )
         );
@@ -296,7 +302,7 @@ pub fn spawn_question_particle(
         )).insert(
             Sprite{..default()}.ease_to(
                 Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)),..default() },
-                EaseFunction::ExponentialOut,
+                EaseFunction::ExponentialIn,
                 EasingType::Once {
                     duration: std::time::Duration::from_secs(1),
                 },
