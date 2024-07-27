@@ -4,6 +4,7 @@
 @group(0) @binding(1) var texture_sampler: sampler;
 struct PostProcessUniform {
     time: f32,
+    translation: vec2<f32>,
     target_height: f32,
     target_width: f32,
     height: f32,
@@ -94,7 +95,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     let daytime = settings.daytime;//(sin(time)) * 0.5 + 0.5;
     let modulate = mix(settings.day_color, settings.night_color, daytime);
 
-    var col = textureSample(screen_texture, texture_sampler, in.uv);
+    //var col = textureSample(screen_texture, texture_sampler, in.uv);
 
     let centered_uv = (in.uv - 0.5) * (settings.width/settings.height) * 2.0;
     let rf = sqrt(dot(centered_uv, centered_uv)) * settings.vignette_strength * (1. - daytime);
@@ -112,7 +113,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     
 
     let pix_uv = vec2(floor(in.uv.y * (th * 0.5)) / (th * 0.5), floor(in.uv.x * (tw * 0.5)) / (tw * 0.5));
-    let wave = sin(time + pix_uv * vec2(10., 30.)) * settings.wave_strength * 0.0001 * (1. - daytime);
+    let wave = sin(time + (pix_uv) * vec2(10., 30.)) * settings.wave_strength * 0.0001 * (1. - daytime);
     let waved_pos = in.uv + wave;
     var waved = textureSample(screen_texture, texture_sampler, waved_pos);
     if waved_pos.x < 0. || waved_pos.x > 1. {

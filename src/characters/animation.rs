@@ -162,11 +162,10 @@ impl PartType {
 pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: &Res<AssetServer>, layout_handles: &mut ResMut<TextureAtlasLayoutHandles>) -> Entity {
     let body_variant = rand::thread_rng().gen_range(0..BODY_COUNT);
     let outfit_variant = rand::thread_rng().gen_range(0..OUTFIT_COUNT);
-    let eye_variant = 0;
     let hair_variant = rand::thread_rng().gen_range(0..HAIR_COUNT);
     let weapon_variant = rand::thread_rng().gen_range(0..WEAPON_COUNT);
 
-    let main_color = rand::thread_rng().gen::<f32>() * 0.5 + 0.5;
+    let main_color = rand::thread_rng().gen::<f32>() * 0.25 + 0.5;
     let second_color = rand::thread_rng().gen::<f32>() * 0.5;
     let third_color = rand::thread_rng().gen::<f32>() * 0.2;
 
@@ -206,7 +205,7 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: &R
                 ..default()
             },
             TextureAtlas{
-                layout: layout_handles.add_or_load(&asset_server, "Weapon", TextureAtlasLayout::from_grid(uvec2(26, 22), WEAPON_COUNT as u32 * 4, 3, Some(uvec2(1, 1)), None)),
+                layout: layout_handles.add_or_load(&asset_server, "Weapon", TextureAtlasLayout::from_grid(uvec2(26, 22), WEAPON_COUNT as u32 * 5, 3, Some(uvec2(1, 1)), None)),
                 index: 2 * weapon_variant
             },
         )).insert(Transform::from_translation(vec3(-1.5, 1., ITEM_Z)));
@@ -351,8 +350,8 @@ impl CivilianAnims for AnimationController{
     fn play_civil_attack(&mut self) {
         if self.priority > 2 {return}
         self.arm();
-        self.current_animation = CharacterAnimation::simple(FrameTime::Constant(0.1), vec![1, 1, 1, 1])
-            .with_item_idx(vec![0, 1, 2, 3]);
+        self.current_animation = CharacterAnimation::simple(FrameTime::Constant(0.1), vec![1, 1, 1, 1, 1])
+            .with_item_idx(vec![0, 1, 2, 3, 4]);
         self.priority = 2;
         self.ticker.to_start();
     }
@@ -514,10 +513,10 @@ impl AnimationController{
     }
 
     pub fn get_item_idx(&self, variants: usize, variant: usize) -> usize{
-        let Some(idx) = self.ticker.get(&self.current_animation.frame_time, &self.current_animation.item_idx) else {return self.get_dir_custom_offset(variants * 4) + variant * 4};
+        let Some(idx) = self.ticker.get(&self.current_animation.frame_time, &self.current_animation.item_idx) else {return self.get_dir_custom_offset(variants * 5) + variant * 5};
         let mut d = self.direction;
         if self.direction == 3 {d = 1} 
-        idx + d * variants * 4 + variant * 4
+        idx + d * variants * 5 + variant * 5
     }
 
     pub fn get_item_offset(&self) -> Vec3{

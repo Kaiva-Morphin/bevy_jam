@@ -9,7 +9,7 @@ use bevy::{
     core_pipeline::{
         core_2d::graph::{Core2d, Node2d},
         fullscreen_vertex_shader::fullscreen_shader_vertex_state,
-    }, ecs::query::QueryItem, math::vec4, prelude::*, render::{
+    }, ecs::query::QueryItem, math::{vec2, vec4}, prelude::*, render::{
         camera::ScalingMode, extract_component::{
             ComponentUniforms, DynamicUniformIndex, ExtractComponent, ExtractComponentPlugin,
             UniformComponentPlugin,
@@ -289,6 +289,7 @@ impl FromWorld for PostProcessPipeline {
 //#[derive(Default)]
 pub struct PostProcessUniform {
     time: f32,
+    translation: Vec2,
     target_height: f32,
     target_width: f32,
     height: f32,
@@ -312,11 +313,14 @@ impl Default for PostProcessUniform {
     fn default() -> Self {
         PostProcessUniform{
             daytime: 0.,
-            day_color: vec4(1.5, 1.1, 0.6, 1.),
-            night_color: vec4(0.005, 0.01, 0.03, 1.),
+            translation: vec2(0., 0.),
+            day_color: vec4(1.3, 0.791, 0.396, 1.),
+            //day_color: vec4(1.5, 1.1, 0.6, 1.),
+            night_color: vec4(0.052, 0.065, 0.323, 1.),
+            //night_color: vec4(0.005, 0.01, 0.03, 1.),
 
-            vignette_strength: 0.25,
-            wave_strength: 9.,
+            vignette_strength: 0.35,
+            wave_strength: 15.,
             time: 0.,
             
             target_height: 1.,
@@ -327,25 +331,22 @@ impl Default for PostProcessUniform {
     }
 }
 
+
 fn late_setup(
     mut commands: Commands,
-    camera: Query<(&OrthographicProjection, Entity), With<MainCamera>>
+    camera: Query<(&OrthographicProjection, &GlobalTransform, Entity), With<MainCamera>>
 ) {
-    let (projection, e) = camera.single();
+    let (projection, t, e) = camera.single();
     let ScalingMode::AutoMin{ min_width: w, min_height: h } = projection.scaling_mode else {return};
     commands.entity(e).insert(
         PostProcessUniform {
             time: 0.0,
+            translation: t.translation().xy(),
             target_height: h,
             target_width: w,
             height: h,
             width: w,
             daytime: 0.,
-            day_color: vec4(1.5, 1.1, 0.6, 1.),
-            night_color: vec4(0.005, 0.01, 0.03, 1.),
-        
-            vignette_strength: 0.25,
-            wave_strength: 12.,
             ..default()
         }
     );
@@ -355,12 +356,14 @@ fn late_setup(
 
 fn update_settings(
     mut settings: Query<&mut PostProcessUniform>, 
+    camera: Query<&GlobalTransform, With<MainCamera>>,
     time: Res<Time>,
     mut egui_context: EguiContexts,
     
 ) {
     let mut settings = settings.single_mut();
     let ctx = egui_context.ctx_mut();
+    let camera_transform = camera.single().translation().xy();
     egui::Window::new("POSTFX").show(ctx, |ui|{
         ui.add(Slider::new(&mut settings.daytime, 0. ..= 1.).text("DAYTIME"));
         ui.add(Slider::new(&mut settings.vignette_strength, 0. ..= 15.).text("VIGNETTE"));
@@ -379,6 +382,7 @@ fn update_settings(
             settings.day_color = Vec3::from_array(rgb_day).extend(1.);
         });
     });
+    settings.translation = camera_transform;
     settings.time = time.elapsed_seconds();
 }
 

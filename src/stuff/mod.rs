@@ -1,9 +1,11 @@
 use std::{f32::consts::PI, time::Duration};
 
-use bevy::{math::uvec2, prelude::*};
+use bevy::{math::{uvec2, vec3}, prelude::*};
+use bevy_easings::*;
 use bevy_rapier2d::prelude::Velocity;
+use rand::Rng;
 
-use crate::core::functions::TextureAtlasLayoutHandles;
+use crate::core::{despawn_lifetime::DespawnTimer, functions::TextureAtlasLayoutHandles};
 
 pub enum SimpleAnimatedTexture{
     HeartGain,
@@ -169,13 +171,223 @@ pub fn stake_bundle(asset_server: &Res<AssetServer>, atlas_handles: &mut ResMut<
 
 
 
-pub fn spawn_cililian_body(){
+pub fn spawn_cililian_body(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    pos: Vec3,
+) -> Entity {
+    let max_offset = 10.;
+    let start = pos + vec3(
+        rand::random::<f32>() * max_offset * 2. - max_offset,
+        rand::random::<f32>() * max_offset * 2. - max_offset,
+        0.
+    );
 
+    let flipped = rand::thread_rng().gen_bool(0.5);
+    commands.spawn((
+        TransformBundle::default(),
+        VisibilityBundle::default(),
+        DespawnTimer::seconds(1.),
+    ))
+    .insert(Transform::from_translation(vec3(0., 10., 8.) + start))
+    .with_children(|commands| {
+        commands.spawn((
+            Name::new("Particle"),
+            SpriteBundle{
+                texture: asset_server.load("particles/body_civilian.png"),
+                ..default()
+            },
+            Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5))
+                .ease_to(
+                    Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)),
+                    EaseFunction::ExponentialOut,
+                    EasingType::Once {
+                        duration: std::time::Duration::from_secs(1),
+                    },
+                )
+        )).insert(
+            Sprite{flip_x: flipped, ..default()}.ease_to(
+                Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), flip_x: flipped,..default() },
+                EaseFunction::ExponentialOut,
+                EasingType::Once {
+                    duration: std::time::Duration::from_secs(1),
+                },
+            )
+        );
+    }).id()
 }
 
-pub fn spawn_hunter_body(){
+pub fn spawn_hunter_body(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    pos: Vec3,
+) -> Entity {
+    let max_offset = 10.;
+    let start = pos + vec3(
+        rand::random::<f32>() * max_offset * 2. - max_offset,
+        rand::random::<f32>() * max_offset * 2. - max_offset,
+        0.
+    );
 
+    let flipped = rand::thread_rng().gen_bool(0.5);
+    commands.spawn((
+        TransformBundle::default(),
+        VisibilityBundle::default(),
+        DespawnTimer::seconds(1.),
+    ))
+    .insert(Transform::from_translation(vec3(0., 10., 8.) + start))
+    .with_children(|commands| {
+        commands.spawn((
+            Name::new("Particle"),
+            SpriteBundle{
+                texture: asset_server.load("particles/body_hunter.png"),
+                ..default()
+            },
+            Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5))
+                .ease_to(
+                    Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)),
+                    EaseFunction::ExponentialOut,
+                    EasingType::Once {
+                        duration: std::time::Duration::from_secs(1),
+                    },
+                )
+        )).insert(
+            Sprite{flip_x: flipped, ..default()}.ease_to(
+                Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), flip_x: flipped,..default() },
+                EaseFunction::ExponentialOut,
+                EasingType::Once {
+                    duration: std::time::Duration::from_secs(1),
+                },
+            )
+        );
+    }).id()
 }
 
+pub fn spawn_question_particle(
+    commands: &mut Commands,
+    layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
+    asset_server: &Res<AssetServer>,
+    pos: Vec3,
+){
+    let max_offset = 7.;
+    let start = pos+vec3(
+        rand::random::<f32>() * max_offset * 2. - max_offset,
+        rand::random::<f32>() * max_offset * 2. - max_offset,
+        0.
+    );
+    commands.spawn((
+        TransformBundle::default(),
+        VisibilityBundle::default(),
+        DespawnTimer::seconds(1.),
+    ))
+    .insert(Transform::from_translation(vec3(20., 10., 8.) + start))
+    .with_children(|commands| {
+        commands.spawn((
+            Name::new("Particle"),
+            emotion_bundle(asset_server, layout_handles, rand::thread_rng().gen_range(0..3) + 6),
+            Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5))
+                .ease_to(
+                    Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)),
+                    EaseFunction::ExponentialOut,
+                    EasingType::Once {
+                        duration: std::time::Duration::from_secs(1),
+                    },
+                )
+        )).insert(
+            Sprite{..default()}.ease_to(
+                Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)),..default() },
+                EaseFunction::ExponentialOut,
+                EasingType::Once {
+                    duration: std::time::Duration::from_secs(1),
+                },
+            )
+        );
+    });
+}
 
+pub fn spawn_angry_particle(
+    commands: &mut Commands,
+    layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
+    asset_server: &Res<AssetServer>,
+    pos: Vec3,
+){
+    let max_offset = 7.;
+    let start = pos+vec3(
+        rand::random::<f32>() * max_offset * 2. - max_offset,
+        rand::random::<f32>() * max_offset * 2. - max_offset,
+        0.
+    );
+
+    let flipped = rand::thread_rng().gen::<bool>();
+    commands.spawn((
+        TransformBundle::default(),
+        VisibilityBundle::default(),
+        DespawnTimer::seconds(1.),
+    ))
+    .insert(Transform::from_translation(vec3(0., 10., 8.) + start))
+    .with_children(|commands| {
+        commands.spawn((
+            Name::new("Particle"),
+            emotion_bundle(asset_server, layout_handles, rand::thread_rng().gen_range(0..3)),
+            Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5) * vec3(if flipped{-1.} else {1.}, 1., 1.))
+                .ease_to(
+                    Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(vec3(if flipped{-1.} else {1.}, 1., 1.)),
+                    EaseFunction::ExponentialOut,
+                    EasingType::Once {
+                        duration: std::time::Duration::from_secs(1),
+                    },
+                )
+        )).insert(
+            Sprite{flip_x: flipped, ..default()}.ease_to(
+                Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), flip_x: flipped,..default() },
+                EaseFunction::ExponentialOut,
+                EasingType::Once {
+                    duration: std::time::Duration::from_secs(1),
+                },
+            )
+        );
+    });
+}
+
+pub fn spawn_warn_particle(
+    commands: &mut Commands,
+    layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
+    asset_server: &Res<AssetServer>,
+    pos: Vec3,
+){
+    let max_offset = 7.;
+    let start = pos+vec3(
+        rand::random::<f32>() * max_offset * 2. - max_offset,
+        rand::random::<f32>() * max_offset * 2. - max_offset,
+        0.
+    );
+    commands.spawn((
+        TransformBundle::default(),
+        VisibilityBundle::default(),
+        DespawnTimer::seconds(1.),
+    ))
+    .insert(Transform::from_translation(vec3(10., 20., 8.) + start))
+    .with_children(|commands| {
+        commands.spawn((
+            Name::new("Particle"),
+            emotion_bundle(asset_server, layout_handles, rand::thread_rng().gen_range(0..3) + 3),
+            Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5))
+                .ease_to(
+                    Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)),
+                    EaseFunction::ExponentialOut,
+                    EasingType::Once {
+                        duration: std::time::Duration::from_secs(1),
+                    },
+                )
+        )).insert(
+            Sprite{..default()}.ease_to(
+                Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), ..default() },
+                EaseFunction::ExponentialOut,
+                EasingType::Once {
+                    duration: std::time::Duration::from_secs(1),
+                },
+            )
+        );
+    });
+}
 

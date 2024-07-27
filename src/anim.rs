@@ -17,6 +17,7 @@ use bevy::prelude::*;
 use bevy_easings::{Ease, EaseFunction, EasingType};
 use characters::animation::{spawn_civilian_animation_bundle, spawn_player_animation_bundle, AnimationController};
 use characters::plugin::CharacterAnimationPlugin;
+use rand::Rng;
 use stuff::*;
 use systems::GameState;
 
@@ -92,51 +93,173 @@ fn update(
         if keyboard.just_pressed(KeyCode::Digit5){
             let max_offset = 7.;
             let start = vec3(
-                rand::random::<f32>() * max_offset - max_offset * 2.,
-                rand::random::<f32>() * max_offset - max_offset * 2.,
+                rand::random::<f32>() * max_offset * 2. - max_offset,
+                rand::random::<f32>() * max_offset * 2. - max_offset,
                 0.
             );
+
+            let flipped = rand::thread_rng().gen::<bool>();
             commands.spawn((
                 TransformBundle::default(),
                 VisibilityBundle::default(),
                 DespawnTimer::seconds(1.),
             ))
-            .insert(Transform::from_translation(vec3(20., 0., 0.) + start))
+            .insert(Transform::from_translation(vec3(0., 10., 8.) + start))
             .with_children(|commands| {
                 commands.spawn((
                     Name::new("Particle"),
-                    emotion_bundle(&asset_server, &mut layout_handles, 0),
-                    Transform::from_translation(vec3(0., 0., 0.))
+                    emotion_bundle(&asset_server, &mut layout_handles, rand::thread_rng().gen_range(0..3)),
+                    Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5) * vec3(if flipped{-1.} else {1.}, 1., 1.))
                         .ease_to(
-                            Transform::from_translation(vec3(0., 5., 0.)),
+                            Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(vec3(if flipped{-1.} else {1.}, 1., 1.)),
                             EaseFunction::ExponentialOut,
                             EasingType::Once {
                                 duration: std::time::Duration::from_secs(1),
                             },
                         )
-                ));
+                )).insert(
+                    Sprite{flip_x: flipped, ..default()}.ease_to(
+                        Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), flip_x: flipped,..default() },
+                        EaseFunction::ExponentialOut,
+                        EasingType::Once {
+                            duration: std::time::Duration::from_secs(1),
+                        },
+                    )
+                );
+            });
+
+            commands.spawn((
+                TransformBundle::default(),
+                VisibilityBundle::default(),
+                DespawnTimer::seconds(1.),
+            ))
+            .insert(Transform::from_translation(vec3(10., 20., 8.) + start))
+            .with_children(|commands| {
+                commands.spawn((
+                    Name::new("Particle"),
+                    emotion_bundle(&asset_server, &mut layout_handles, rand::thread_rng().gen_range(0..3) + 3),
+                    Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5) * vec3(if flipped{-1.} else {1.}, 1., 1.))
+                        .ease_to(
+                            Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(vec3(if flipped{-1.} else {1.}, 1., 1.)),
+                            EaseFunction::ExponentialOut,
+                            EasingType::Once {
+                                duration: std::time::Duration::from_secs(1),
+                            },
+                        )
+                )).insert(
+                    Sprite{..default()}.ease_to(
+                        Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), ..default() },
+                        EaseFunction::ExponentialOut,
+                        EasingType::Once {
+                            duration: std::time::Duration::from_secs(1),
+                        },
+                    )
+                );
+            });
+
+            commands.spawn((
+                TransformBundle::default(),
+                VisibilityBundle::default(),
+                DespawnTimer::seconds(1.),
+            ))
+            .insert(Transform::from_translation(vec3(20., 10., 8.) + start))
+            .with_children(|commands| {
+                commands.spawn((
+                    Name::new("Particle"),
+                    emotion_bundle(&asset_server, &mut layout_handles, rand::thread_rng().gen_range(0..3) + 6),
+                    Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5))
+                        .ease_to(
+                            Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)),
+                            EaseFunction::ExponentialOut,
+                            EasingType::Once {
+                                duration: std::time::Duration::from_secs(1),
+                            },
+                        )
+                )).insert(
+                    Sprite{flip_x: flipped, ..default()}.ease_to(
+                        Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), flip_x: flipped,..default() },
+                        EaseFunction::ExponentialOut,
+                        EasingType::Once {
+                            duration: std::time::Duration::from_secs(1),
+                        },
+                    )
+                );
             });
         }
-
-        if keyboard.just_pressed(KeyCode::Digit6){
-            let max_offset = 7.;
+        if keyboard.pressed(KeyCode::AltLeft){
+            let max_offset = 10.;
             let start = vec3(
-                rand::random::<f32>() * max_offset - max_offset * 2.,
-                rand::random::<f32>() * max_offset - max_offset * 2.,
+                rand::random::<f32>() * max_offset * 2. - max_offset,
+                rand::random::<f32>() * max_offset * 2. - max_offset,
                 0.
             );
+
+            let flipped = rand::thread_rng().gen_bool(0.5);
+            commands.spawn((
+                TransformBundle::default(),
+                VisibilityBundle::default(),
+                DespawnTimer::seconds(1.),
+            ))
+            .insert(Transform::from_translation(vec3(0., 10., 8.) + start))
+            .with_children(|commands| {
+                commands.spawn((
+                    Name::new("Particle"),
+                    SpriteBundle{
+                        texture: asset_server.load("particles/body_civilian.png"),
+                        ..default()
+                    },
+                    Transform::from_translation(vec3(0., 0., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)).with_scale(Vec3::splat(0.5))
+                        .ease_to(
+                            Transform::from_translation(vec3(rand::thread_rng().gen::<f32>() * 3. - 1.5, 4. + rand::thread_rng().gen::<f32>() * 5., 0.)).with_rotation(Quat::from_rotation_z(rand::thread_rng().gen::<f32>() - 0.5)),
+                            EaseFunction::ExponentialOut,
+                            EasingType::Once {
+                                duration: std::time::Duration::from_secs(1),
+                            },
+                        )
+                )).insert(
+                    Sprite{flip_x: flipped, ..default()}.ease_to(
+                        Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), flip_x: flipped,..default() },
+                        EaseFunction::ExponentialOut,
+                        EasingType::Once {
+                            duration: std::time::Duration::from_secs(1),
+                        },
+                    )
+                );
+            });
+        };
+
+        if keyboard.just_pressed(KeyCode::Digit6){
+            let max_offset = 20.;
+            let start = vec3(
+                rand::random::<f32>() * max_offset * 2. - max_offset,
+                rand::random::<f32>() * max_offset * 2. - max_offset,
+                0.
+            );
+
+            let flipped = rand::thread_rng().gen_bool(0.5);
             commands.spawn((
                 TransformBundle::default(),
                 VisibilityBundle::default(),
                 DespawnTimer::seconds(5.),
             ))
-            .insert(Transform::from_translation(vec3(-20., 0., 0.) + start))
+            .insert(Transform::from_translation(vec3(0., 10., 8.) + start).with_scale(vec3(if flipped{-1.} else {1.}, 1., 1.)))
             .with_children(|commands| {
                 commands.spawn((
-                    
-                ));
+                    Name::new("Particle"),
+                    SpriteBundle{
+                        texture: asset_server.load("particles/body_civilian.png"),
+                        ..default()
+                    },
+                )).insert(
+                    Sprite{..default()}.ease_to(
+                        Sprite { color: Color::Srgba(Srgba::new(1., 1., 1., 0.)), ..default() },
+                        EaseFunction::ExponentialIn,
+                        EasingType::Once {
+                            duration: std::time::Duration::from_secs(5),
+                        },
+                    )
+                );
             });
         }
-        
     }
 }
