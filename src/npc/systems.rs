@@ -59,7 +59,6 @@ pub fn manage_civilians(
     day_cycle: Res<DayCycle>,
     transformer: Res<TransformToGrid>,
     trespassable: Res<TrespassableCells>,
-    mut gizmos: Gizmos,
     rapier_context: Res<RapierContext>,
     mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
     asset_server: Res<AssetServer>,
@@ -186,11 +185,6 @@ pub fn manage_civilians(
                 }
                 
                 if let Some(path) = &civ_path.path {
-                    for id in 0..path.len() - 1 {
-                        let p0 = transformer.to_world(path[id]);
-                        let p1 = transformer.to_world(path[id + 1]);
-                        gizmos.line_2d(p0, p1, Color::Srgba(RED))
-                    }
                     let move_dir = transformer.to_world(path[1]) - civ_pos;
 
                     if move_dir.x.abs() < 0.1 { // x axis is priotirized 
@@ -290,7 +284,6 @@ pub fn manage_hunters(
     player_data: Query<(&Transform, &PlayerController, Entity), With<Player>>,
     transformer: Res<TransformToGrid>,
     trespassable: Res<TrespassableCells>,
-    mut gizmos: Gizmos,
     rapier_context: Res<RapierContext>,
     time: Res<Time>,
     mut atlas_handles: ResMut<TextureAtlasLayoutHandles>,
@@ -317,7 +310,6 @@ pub fn manage_hunters(
         if last_seen_entity == player_entity && length < SPOT_DIST{
             player_in_sight = true;
         }
-        gizmos.line_2d(hunter_pos, player_pos, Color::Srgba(BLUE));
 
         match *hunter_state {
             NpcState::Attack => {
@@ -447,11 +439,6 @@ pub fn manage_hunters(
                 }
                 
                 if let Some(path) = &hunter_path.path {
-                    for id in 0..path.len() - 1 {
-                        let p0 = transformer.to_world(path[id]);
-                        let p1 = transformer.to_world(path[id + 1]);
-                        gizmos.line_2d(p0, p1, Color::Srgba(RED))
-                    }
                     let move_dir = transformer.to_world(path[1]) - hunter_pos;
 
                     if move_dir.x.abs() < 0.1 { // x axis is priotirized 
@@ -577,11 +564,11 @@ pub fn entity_spawner(
         if spawner.timer.finished() {
             let spawner_pos = spawner_gpos.translation().xy();
             if rand.gen_bool(0.5) {
-                if civilians.iter().len() < 1 {
+                if civilians.iter().len() < 30 {
                     spawn_civilian(&mut commands, &asset_server, spawner_pos, &mut layout_handles);
                 }
             } else {
-                if hunters.iter().len() < 1 {
+                if hunters.iter().len() < 10 {
                     spawn_hunter(&mut commands, &asset_server, spawner_pos, &mut layout_handles);
                 }
             }

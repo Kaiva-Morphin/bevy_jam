@@ -63,6 +63,8 @@ fn f(x: f32) -> f32 {
         return 1. - (-2. * x + 2.).powf(2.) / 2.;
     }
 }
+#[derive(Event, Debug)]
+pub struct PauseEvent;
 
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GameState {
@@ -75,9 +77,11 @@ pub fn pause_game(
     state: Res<State<GameState>>,
     mut next_state: ResMut<NextState<GameState>>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut time: ResMut<Time<Virtual>>
+    mut time: ResMut<Time<Virtual>>,
+    mut pause_event: EventReader<PauseEvent>,
 ) {
-    if keyboard.just_released(KeyCode::Escape) {
+    let t = pause_event.read();
+    for _pause in t {
         match state.get() {
             GameState::InGame => {
                 next_state.set(GameState::Pause);
@@ -88,5 +92,40 @@ pub fn pause_game(
                 time.unpause();
             },
         }
+    }
+}
+
+#[derive(Component)]
+pub struct Score;
+
+pub fn spawn_score(
+    mut commands: Commands,
+    player: Query<&Player>,
+    asset_server: Res<AssetServer>,
+) {
+    if let Ok(player) = player.get_single() {
+        let font = asset_server.load("fonts/Monocraft.ttf");
+        commands.spawn((TextBundle {
+            style: Style {
+                top: Val::Percent(0.),
+                left: Val::Percent(0.),
+                ..default()
+            },
+            text: Text {
+                sections: vec![TextSection::new(format!("Score: {:?}", player.score as i32), TextStyle { font, font_size: 16., color: Color::WHITE })],
+                ..default()
+            },
+            ..default()
+        }, Score));
+    }
+}
+
+pub fn update_score(
+    player: Query<&Player>,
+    mut score: Query<&mut Text, With<Score>>
+) {
+    if let Ok(player) = player.get_single() {
+        let mut score = score.single_mut();
+        score.sections[0].value = format!("Score: {:?}", player.score as i32)
     }
 }
