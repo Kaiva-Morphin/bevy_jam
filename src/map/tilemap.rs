@@ -1,10 +1,12 @@
 use bevy::{math::{ivec2, uvec2, vec2, vec3}, prelude::*, utils::{HashMap, HashSet}};
 use bevy_ecs_ldtk::prelude::*;
+use bevy_light_2d::light::PointLight2d;
 use bevy_rapier2d::{dynamics::RigidBody, geometry::{Collider, Friction}, prelude::{CollisionGroups, Group}};
 use noise::{core::perlin, NoiseFn, Perlin};
 use rand::Rng;
+use bevy_easings::*;
 
-use crate::{core::{camera::plugin::CameraController, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, player::systems::STRUCTURES_CG};
+use crate::{core::{camera::plugin::CameraController, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, player::systems::{RAYCASTABLE_STRUCT_CG, STRUCTURES_CG}, stuff::fire_bundle, DayCycle};
 
 #[derive(Component)]
 pub struct Structure;
@@ -16,7 +18,7 @@ pub fn pre_setup(
     let ldtk_handle = asset_server.load("map/map.ldtk");
     commands.spawn(LdtkWorldBundle {
         ldtk_handle,
-        transform: Transform::from_translation(Vec3::Z * -9.),
+        transform: Transform::from_translation(Vec3::Z * -11.),
         ..Default::default()
     });
     commands.insert_resource(TransformToGrid{
@@ -26,6 +28,7 @@ pub fn pre_setup(
         ready: false,
         grid_size: ivec2(0, 0)
     });
+    
 }
 
 pub fn watcher (
@@ -84,6 +87,14 @@ pub struct TileObsticleBundle {
     obsticle: TileObsticle,
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Default, Component)]
+pub struct RaycastableTileObsticle;
+
+#[derive(Clone, Debug, Default, Bundle, LdtkIntCell)]
+pub struct RaycastableTileObsticleBundle {
+    obsticle: RaycastableTileObsticle,
+}
+
 #[derive(Clone, Debug, Default, Bundle, LdtkIntCell)]
 pub struct TiledTreeBundle {
     obsticle: TileObsticle,
@@ -95,6 +106,130 @@ pub struct AnimatedTree;
 
 #[derive(Component)]
 pub struct AnimatedTreePart(u8);
+
+
+
+
+#[derive(Component, Default)]
+pub struct LightEmitterPY;
+#[derive(Bundle, Default, LdtkIntCell)]
+pub struct LightEmitterPYBundle{b: LightEmitterPY}
+#[derive(Component, Default)]
+pub struct LightEmitterPYNX;
+#[derive(Bundle, Default, LdtkIntCell)]
+pub struct LightEmitterPYNXBundle{b: LightEmitterPYNX}
+#[derive(Component, Default)]
+pub struct LightEmitterPYPX;
+#[derive(Bundle, Default, LdtkIntCell)]
+pub struct LightEmitterPYPXBundle{b: LightEmitterPYPX}
+#[derive(Component, Default)]
+pub struct LightEmitterNY;
+#[derive(Bundle, Default, LdtkIntCell)]
+pub struct LightEmitterNYBundle{b: LightEmitterNY}
+
+#[derive(Component)]
+pub struct LightEmitter;
+
+#[derive(Component, Default)]
+pub struct LightEmitterAlways;
+
+#[derive(Bundle, Default, LdtkIntCell)]
+pub struct LightEmitterAlwaysBundle{b: LightEmitterAlways}
+
+
+#[derive(Component)]
+pub struct LightEmitterCyclic;
+
+#[derive(Component)]
+pub struct NightWindow;
+
+pub fn update_emitter_tiles(
+    mut commands: Commands,
+    new_py: Query<(Entity,&TileMetadata), Added<LightEmitterPY>>,
+    new_pynx: Query<(Entity,&TileMetadata), Added<LightEmitterPYNX>>,
+    new_pypx: Query<(Entity,&TileMetadata), Added<LightEmitterPYPX>>,
+    new_ny: Query<(Entity,&TileMetadata), Added<LightEmitterNY>>,
+
+    mut overlay: Query<&mut Visibility, With<NightWindow>>,
+
+    new_always: Query<Entity, Added<LightEmitterAlways>>,
+    
+    mut handles: ResMut<TextureAtlasLayoutHandles>,
+
+    mut emitters: Query<(&mut PointLight2d, &GlobalTransform)>,
+    
+    post_process: Query<&PostProcessUniform>,
+    daycycle: Res<DayCycle>,
+    asset_server: Res<AssetServer>,
+    time: Res<Time<Virtual>>
+){
+    let max_intensity = 1.;
+    let default_radius = 150.;
+    let default_falloff = 0.;
+    let color = Color::srgb(1.0, 0.791, 0.396);
+    let mut spawn_light_bundle = |c: &mut ChildBuilder, offset: Vec3, n: String|{
+        let v = n.parse::<usize>().unwrap();
+        c.spawn((
+            bevy_light_2d::light::PointLight2dBundle{
+                point_light: PointLight2d{
+                    color: color,
+                    intensity: max_intensity,
+                    radius: default_radius,
+                    falloff: default_falloff,
+                },
+                transform: Transform::from_translation(offset+ vec3(0., 0., 1.)),
+                ..Default::default()
+            },
+            LightEmitter
+        ));
+        c.spawn((
+            SpriteBundle{
+                texture: asset_server.load("map/light_emitters.png"),
+                transform: Transform::from_translation(vec3(0., 0., 0.5)),
+                ..default()
+            },
+            TextureAtlas{
+                layout : handles.add_or_load(&asset_server, "Emitters", TextureAtlasLayout::from_grid(uvec2(16, 16), 7, 4, None, None)),
+                index : v + 7
+            },
+            NightWindow
+        ));
+    };
+    for b in new_py.iter() {commands.entity(b.0).with_children(|c|{spawn_light_bundle(c, vec3(0., 4., 0.), b.1.data.clone())});}
+    for b in new_pynx.iter() {commands.entity(b.0).with_children(|c|{spawn_light_bundle(c, vec3(-4., 4., 0.), b.1.data.clone())});}
+    for b in new_pypx.iter() {commands.entity(b.0).with_children(|c|{spawn_light_bundle(c, vec3(4., 4., 0.), b.1.data.clone())});}
+    for b in new_ny.iter() {commands.entity(b.0).with_children(|c|{spawn_light_bundle(c, vec3(0., 0., 0.), b.1.data.clone())});}
+
+
+    for b in new_always.iter() {commands.entity(b).with_children(|c|{
+        c.spawn((
+            bevy_light_2d::light::PointLight2dBundle{
+                point_light: PointLight2d{
+                    color: Color::srgb(1., 0.3, 0.),
+                    intensity: max_intensity,
+                    radius: default_radius,
+                    falloff: default_falloff,
+                },
+                ..Default::default()
+            },
+            LightEmitter,
+        )).insert(
+            fire_bundle(&asset_server, &mut handles, rand::thread_rng().gen_range(0..19))
+        ).insert(Transform::from_translation(vec3(0., 10., 1.)));
+    });}
+    let p = post_process.single();
+    for mut l in emitters.iter_mut(){
+        l.0.intensity = p.daytime.powi(2) * max_intensity;
+        if (time.elapsed_seconds() * 16.).round() as usize % 2 == 0 {
+            l.0.radius = default_radius + rand::thread_rng().gen_range(0..100) as f32 * 0.01 * 0.2 * default_radius;
+        }
+    }
+    if daycycle.is_night || daycycle.is_translating{
+        for mut v in overlay.iter_mut(){*v = Visibility::Inherited}
+    } else {
+        for mut v in overlay.iter_mut(){*v = Visibility::Hidden}
+    }
+}
 
 
 pub fn update_animated_trees(
@@ -436,6 +571,168 @@ pub fn spawn_tile_collision(
         });
     }
 }
+
+
+pub fn spawn_raycastable_tile_collision(
+    mut commands: Commands,
+    wall_query: Query<(&GridCoords, &Parent), Added<RaycastableTileObsticle>>,
+    parent_query: Query<&Parent, Without<RaycastableTileObsticle>>,
+    level_query: Query<(Entity, &LevelIid)>,
+    ldtk_projects: Query<&Handle<LdtkProject>>,
+    ldtk_project_assets: Res<Assets<LdtkProject>>,
+) {
+    /// Represents a wide wall that is 1 tile tall
+    /// Used to spawn wall collisions
+    #[derive(Clone, Eq, PartialEq, Debug, Default, Hash)]
+    struct Plate {
+        left: i32,
+        right: i32,
+    }
+
+    /// A simple rectangle type representing a wall of any size
+    struct Rect {
+        left: i32,
+        right: i32,
+        top: i32,
+        bottom: i32,
+    }
+
+    // Consider where the walls are
+    // storing them as GridCoords in a HashSet for quick, easy lookup
+    //
+    // The key of this map will be the entity of the level the wall belongs to.
+    // This has two consequences in the resulting collision entities:
+    // 1. it forces the walls to be split along level boundaries
+    // 2. it lets us easily add the collision entities as children of the appropriate level entity
+    let mut level_to_wall_locations: HashMap<Entity, HashSet<GridCoords>> = HashMap::new();
+
+    wall_query.iter().for_each(|(&grid_coords, parent)| {
+        // An intgrid tile's direct parent will be a layer entity, not the level entity
+        // To get the level entity, you need the tile's grandparent.
+        // This is where parent_query comes in.
+        if let Ok(grandparent) = parent_query.get(parent.get()) {
+            level_to_wall_locations
+                .entry(grandparent.get())
+                .or_default()
+                .insert(grid_coords);
+        }
+    });
+
+    if !wall_query.is_empty() {
+        level_query.iter().for_each(|(level_entity, level_iid)| {
+            if let Some(level_walls) = level_to_wall_locations.get(&level_entity) {
+                let ldtk_project = ldtk_project_assets
+                    .get(ldtk_projects.single())
+                    .expect("Project should be loaded if level has spawned");
+
+                let level = ldtk_project
+                    .as_standalone()
+                    .get_loaded_level_by_iid(&level_iid.to_string())
+                    .expect("Spawned level should exist in LDtk project");
+
+                let LayerInstance {
+                    c_wid: width,
+                    c_hei: height,
+                    grid_size,
+                    ..
+                } = level.layer_instances()[0];
+                // combine wall tiles into flat "plates" in each individual row
+                let mut plate_stack: Vec<Vec<Plate>> = Vec::new();
+
+                for y in 0..height {
+                    let mut row_plates: Vec<Plate> = Vec::new();
+                    let mut plate_start = None;
+
+                    // + 1 to the width so the algorithm "terminates" plates that touch the right edge
+                    for x in 0..width + 1 {
+                        match (plate_start, level_walls.contains(&GridCoords { x, y })) {
+                            (Some(s), false) => {
+                                row_plates.push(Plate {
+                                    left: s,
+                                    right: x - 1,
+                                });
+                                plate_start = None;
+                            }
+                            (None, true) => plate_start = Some(x),
+                            _ => (),
+                        }
+                    }
+
+                    plate_stack.push(row_plates);
+                }
+
+                // combine "plates" into rectangles across multiple rows
+                let mut rect_builder: HashMap<Plate, Rect> = HashMap::new();
+                let mut prev_row: Vec<Plate> = Vec::new();
+                let mut wall_rects: Vec<Rect> = Vec::new();
+
+                // an extra empty row so the algorithm "finishes" the rects that touch the top edge
+                plate_stack.push(Vec::new());
+
+                for (y, current_row) in plate_stack.into_iter().enumerate() {
+                    for prev_plate in &prev_row {
+                        if !current_row.contains(prev_plate) {
+                            // remove the finished rect so that the same plate in the future starts a new rect
+                            if let Some(rect) = rect_builder.remove(prev_plate) {
+                                wall_rects.push(rect);
+                            }
+                        }
+                    }
+                    for plate in &current_row {
+                        rect_builder
+                            .entry(plate.clone())
+                            .and_modify(|e| e.top += 1)
+                            .or_insert(Rect {
+                                bottom: y as i32,
+                                top: y as i32,
+                                left: plate.left,
+                                right: plate.right,
+                            });
+                    }
+                    prev_row = current_row;
+                }
+
+                commands.entity(level_entity).with_children(|level| {
+                    // Spawn colliders for every rectangle..
+                    // Making the collider a child of the level serves two purposes:
+                    // 1. Adjusts the transforms to be relative to the level for free
+                    // 2. the colliders will be despawned automatically when levels unload
+                    for wall_rect in wall_rects {
+                        level
+                            .spawn_empty()
+                            .insert(Collider::cuboid(
+                                (wall_rect.right as f32 - wall_rect.left as f32 + 1.)
+                                    * grid_size as f32
+                                    / 2.,
+                                (wall_rect.top as f32 - wall_rect.bottom as f32 + 1.)
+                                    * grid_size as f32
+                                    / 2.,
+                            ))
+                            .insert((
+                                RigidBody::Fixed,
+                                Structure,
+                                CollisionGroups::new(
+                                    Group::from_bits(RAYCASTABLE_STRUCT_CG).unwrap(),
+                                    Group::ALL,
+                                ),
+                            ))
+                            .insert(Friction::new(1.0))
+                            .insert(Transform::from_xyz(
+                                (wall_rect.left + wall_rect.right + 1) as f32 * grid_size as f32
+                                    / 2.,
+                                (wall_rect.bottom + wall_rect.top + 1) as f32 * grid_size as f32
+                                    / 2.,
+                                0.,
+                            ))
+                            .insert(Name::new("COLLIDER"))
+                            .insert(GlobalTransform::default());
+                    }
+                });
+            }
+        });
+    }
+}
+
 
 
 

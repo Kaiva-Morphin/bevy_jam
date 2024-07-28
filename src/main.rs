@@ -50,27 +50,5 @@ fn main() {
         update_blood_particles.run_if(in_state(GameState::InGame)),
         pause_game
     ))
-    .add_systems(Update, test)
     .run();
-}
-
-use rand::Rng;
-
-pub fn test(
-    mut commands: Commands,
-    mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
-    asset_server: Res<AssetServer>,
-    follow: Query<Entity, With<Player>>,
-    mut spawned: Local<bool>
-){
-    if *spawned{return}
-    if follow.is_empty(){return}
-    let follow = follow.single();
-    let pos = vec3(
-        rand::thread_rng().gen::<f32>() * 100.,
-        rand::thread_rng().gen::<f32>() * 100.,
-        10.
-    );
-    spawn_follow_blood_particle(&mut commands, &mut layout_handles, &asset_server, follow, pos, 100);
-    *spawned = true
 }

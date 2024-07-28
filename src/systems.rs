@@ -7,7 +7,7 @@ use pathfinding::num_traits::{Euclid, Signed};
 use crate::{characters::animation::AnimationController, core::{camera::plugin::MainCamera, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, player::components::Player};
 
 pub const TRANSLATION_DURATION: f32 = 1.0;
-pub const DAY_DURATION: f32 = 10.0;
+pub const DAY_DURATION: f32 = 1.0;
 
 #[derive(Resource)]
 pub struct DayCycle {
@@ -33,11 +33,13 @@ pub fn update_daycycle(
     let local_time = cycle_time % (TRANSLATION_DURATION + DAY_DURATION);
     cycle.is_night = is_night_raw;
     let mut light = cam.single_mut();
+    cycle.is_translating = false;
     if local_time > DAY_DURATION {
         let translation = (local_time - DAY_DURATION) / TRANSLATION_DURATION;
         let v = if is_night_raw {1.-translation} else {translation};
         post_process.single_mut().daytime = v;
         light.brightness = (1. - v) * 0.8 + 0.2;
+        cycle.is_translating = true;
         if translation > 0.5 {
             cycle.is_night = !cycle.is_night;
         }

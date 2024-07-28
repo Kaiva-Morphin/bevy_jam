@@ -7,7 +7,7 @@ use bevy_rapier2d::prelude::Velocity;
 use bevy_light_2d::prelude::Light2dPlugin;
 use crate::player::components::Player;
 
-use super::tilemap::{self, setup_camera_bounds, TileObsticle, TransformToGrid};
+use super::tilemap::{self, setup_camera_bounds, update_emitter_tiles, TileObsticle, TransformToGrid};
 
 pub struct TileMapPlugin;
 
@@ -27,14 +27,29 @@ impl Plugin for TileMapPlugin {
         });
         app.add_systems(PreStartup, tilemap::pre_setup);
         app.add_systems(Update, tilemap::watcher);
-        app.add_systems(Update, (tilemap::spawn_tile_collision, setup_camera_bounds, update_unit_grid, tilemap::spawn_tile_tree, tilemap::update_animated_trees));
+        app.add_systems(Update, (tilemap::spawn_tile_collision, update_emitter_tiles, setup_camera_bounds, update_unit_grid, tilemap::spawn_tile_tree, tilemap::spawn_raycastable_tile_collision, tilemap::update_animated_trees));
         app.add_systems(PreUpdate, trespassable_spawn_listener);
         app.add_systems(PreUpdate, sizif);
         app.register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner");
-
-        app.register_ldtk_int_cell_for_layer::<tilemap::TileObsticleBundle>("Ground", 1);
+        app.register_ldtk_int_cell_for_layer::<tilemap::RaycastableTileObsticleBundle>("Ground", 1);
         app.register_ldtk_int_cell_for_layer::<tilemap::TiledTreeBundle>("Ground", 3);
         app.register_ldtk_int_cell_for_layer::<tilemap::TileObsticleBundle>("Ground", 4);
+        app.register_ldtk_int_cell_for_layer::<tilemap::RaycastableTileObsticleBundle>("Ground", 5);
+
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterPYBundle>("Emitters", 1);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterPYNXBundle>("Emitters", 2);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterPYPXBundle>("Emitters", 3);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterPYBundle>("Emitters", 4);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterPYBundle>("Emitters", 5);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterPYBundle>("Emitters", 6);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterPYBundle>("Emitters", 7);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterNYBundle>("Emitters", 8);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterNYBundle>("Emitters", 9);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterNYBundle>("Emitters", 10);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterNYBundle>("Emitters", 11 );
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterAlwaysBundle>("Emitters", 12);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterAlwaysBundle>("Emitters", 13);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterAlwaysBundle>("Emitters", 15);
 
         app.insert_resource(TrespassableCells::default());
     }

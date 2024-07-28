@@ -18,6 +18,7 @@ pub const PLAYER_CG: u32 = 0b0000_0000_0000_0001;
 pub const NPC_CG: u32 = 0b0000_0000_0000_0010;
 pub const STRUCTURES_CG: u32 = 0b0000_0000_0000_0100;
 pub const BULLET_CG: u32 = 0b0000_0000_0000_1000;
+pub const RAYCASTABLE_STRUCT_CG: u32 = 0b0000_0000_0001_0000;
 
 #[derive(Component)]
 pub struct PlayerController{
@@ -67,17 +68,7 @@ pub fn spawn_player(
             Group::from_bits(PLAYER_CG).unwrap(),
             Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG).unwrap()
         ),
-    )).with_children(|commands| {commands.spawn((
-        PartType::Body{variant: 0, variants: 1},
-        SpriteBundle{
-            texture: asset_server.load("player/vampire.png"),
-            ..default()
-        },
-        TextureAtlas{
-            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 20), 7, 3, Some(uvec2(1, 1)), None)),
-            index: 2
-        },
-    ));});
+    ));
 }
 
 pub fn player_controller(

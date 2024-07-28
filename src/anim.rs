@@ -255,5 +255,17 @@ fn update(
             let flipped = rand::thread_rng().gen_bool(0.5);
             spawn_cililian_body(&mut commands, &mut layout_handles, &asset_server, vec3(10., 0., 0.));
         }
+
+        if keyboard.just_pressed(KeyCode::Digit7){
+            let max_offset = 20.;
+            let start = vec3(
+                rand::random::<f32>() * max_offset * 2. - max_offset,
+                rand::random::<f32>() * max_offset * 2. - max_offset,
+                0.
+            );
+
+            let flipped = rand::thread_rng().gen_bool(0.5);
+            spawn_cililian_body(&mut commands, &mut layout_handles, &asset_server, vec3(10., 0., 0.));
+        }
     }
 }
