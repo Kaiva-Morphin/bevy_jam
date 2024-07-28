@@ -5,7 +5,7 @@ use bevy_rapier2d::prelude::*;
 use rand::{thread_rng, Rng};
 
 use crate::{
-    characters::animation::*, core::functions::TextureAtlasLayoutHandles, map::{plugin::{EntitySpawner, TrespassableCells}, 
+    characters::animation::*, core::functions::TextureAtlasLayoutHandles, map::{plugin::{CivilianSpawner, HunterSpawner, TrespassableCells}, 
     tilemap::{Structure, TransformToGrid}}, player::{components::{HitPlayer, KillNpc, Player}, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, sounds::components::PlaySoundEvent, stuff::{spawn_angry_particle, spawn_cililian_body, spawn_hunter_body, spawn_question_particle, spawn_warn_particle}, systems::DayCycle
 };
 
@@ -543,25 +543,34 @@ pub fn process_collisions(
 
 pub fn entity_spawner(
     mut commands: Commands,
-    mut spawners: Query<(&mut EntitySpawner, &GlobalTransform)>,
+    mut civilian_spawners: Query<(&mut CivilianSpawner, &GlobalTransform)>,
+    mut hunter_spawners: Query<(&mut HunterSpawner, &GlobalTransform)>,
     civilians: Query<&Civilian>,
     hunters: Query<&Hunter>,
     mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
     asset_server: Res<AssetServer>,
     time: Res<Time>,
+    day_cycle: Res<DayCycle>,
 ) {
     let dt = time.delta_seconds();
     let mut rand = thread_rng();
-    for (mut spawner, spawner_gpos) in spawners.iter_mut() {
+    for (mut spawner, spawner_gpos) in civilian_spawners.iter_mut() {
         spawner.timer.tick(Duration::from_secs_f32(dt));
         if spawner.timer.finished() {
             let spawner_pos = spawner_gpos.translation().xy();
-            if rand.gen_bool(0.5) {
-                if civilians.iter().len() < 30 {
+            if rand.gen_bool(0.15) {
+                if civilians.iter().len() < 200 && !day_cycle.is_night{
                     spawn_civilian(&mut commands, &asset_server, spawner_pos, &mut layout_handles);
                 }
-            } else {
-                if hunters.iter().len() < 10 {
+            }
+        }
+    }
+    for (mut spawner, spawner_gpos) in hunter_spawners.iter_mut() {
+        spawner.timer.tick(Duration::from_secs_f32(dt));
+        if spawner.timer.finished() {
+            let spawner_pos = spawner_gpos.translation().xy();
+            if rand.gen_bool(0.15) {
+                if hunters.iter().len() < 200 && day_cycle.is_night{
                     spawn_hunter(&mut commands, &asset_server, spawner_pos, &mut layout_handles);
                 }
             }
