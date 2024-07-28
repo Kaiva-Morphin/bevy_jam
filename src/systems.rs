@@ -7,7 +7,7 @@ use pathfinding::num_traits::{Euclid, Signed};
 use crate::{characters::animation::AnimationController, core::{camera::plugin::MainCamera, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, player::components::Player};
 
 pub const TRANSLATION_DURATION: f32 = 1.0;
-pub const DAY_DURATION: f32 = 1.0;
+pub const DAY_DURATION: f32 = 15.0;
 
 #[derive(Resource)]
 pub struct DayCycle {
