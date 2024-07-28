@@ -2,8 +2,9 @@ use std::time::Duration;
 
 use bevy::{math::ivec2, prelude::*, utils::HashSet};
 use bevy_ecs_ldtk::prelude::*;
-use bevy_rapier2d::prelude::{KinematicCharacterController, Velocity};
-
+use bevy_inspector_egui::quick::ResourceInspectorPlugin;
+use bevy_rapier2d::prelude::Velocity;
+use bevy_light_2d::prelude::Light2dPlugin;
 use crate::player::components::Player;
 
 use super::tilemap::{self, setup_camera_bounds, TileObsticle, TransformToGrid};
@@ -14,6 +15,7 @@ impl Plugin for TileMapPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             LdtkPlugin,
+            Light2dPlugin,
         ));
         app.insert_resource(LevelSelection::Uid(0))
         .insert_resource(LdtkSettings {
