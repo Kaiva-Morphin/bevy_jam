@@ -13,7 +13,8 @@ pub enum SimpleAnimatedTexture{
     Soul,
     Fork,
     Knife,
-    Garlic
+    Garlic,
+    Fire
 }
 
 #[derive(Component)]
@@ -37,6 +38,7 @@ pub fn simple_anim_update(
             SimpleAnimatedTexture::Fork => 8,
             SimpleAnimatedTexture::Knife => 8,
             SimpleAnimatedTexture::Garlic => 4,
+            SimpleAnimatedTexture::Fire => 19,
         };
         let offset = match anim_type.effect {
             SimpleAnimatedTexture::HeartGain => 2,
@@ -45,6 +47,7 @@ pub fn simple_anim_update(
             SimpleAnimatedTexture::Fork => 10,
             SimpleAnimatedTexture::Knife => 0,
             SimpleAnimatedTexture::Garlic => 30,
+            SimpleAnimatedTexture::Fire => 0,
         };
 
         if anim_type.timer.finished(){
@@ -53,6 +56,23 @@ pub fn simple_anim_update(
     }
 }
 
+pub fn fire_bundle(asset_server: &Res<AssetServer>, atlas_handles: &mut ResMut<TextureAtlasLayoutHandles>, idx: usize) -> impl Bundle {
+    (
+        SimpleAnimated{effect: SimpleAnimatedTexture::Fire, timer: Timer::from_seconds(0.06, TimerMode::Repeating)},
+        SpriteBundle{
+            texture: asset_server.load("particles/fire.png"),
+            sprite: Sprite{
+                color: Color::srgb(1.5, 1.5, 1.5),
+                ..default()
+            },
+            ..default()
+        },
+        TextureAtlas{
+            layout: atlas_handles.add_or_load(asset_server, "Fire", TextureAtlasLayout::from_grid(uvec2(16, 23), 8, 3, None, None)),
+            index: idx
+        },
+    )
+}
 pub fn emotion_bundle(asset_server: &Res<AssetServer>, atlas_handles: &mut ResMut<TextureAtlasLayoutHandles>, idx: usize) -> impl Bundle {
     (
         SpriteBundle{

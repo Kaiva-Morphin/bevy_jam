@@ -314,11 +314,10 @@ impl Default for PostProcessUniform {
         PostProcessUniform{
             daytime: 0.,
             translation: vec2(0., 0.),
-            day_color: vec4(1.3, 0.791, 0.396, 1.),
+            day_color: vec4(1.0, 0.791, 0.396, 1.),
             //day_color: vec4(1.5, 1.1, 0.6, 1.),
-            night_color: vec4(0.052, 0.065, 0.323, 1.),
+            night_color: vec4(0.182, 0.221, 1., 1.),
             //night_color: vec4(0.005, 0.01, 0.03, 1.),
-
             vignette_strength: 0.35,
             wave_strength: 15.,
             time: 0.,

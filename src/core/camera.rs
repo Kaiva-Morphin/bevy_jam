@@ -101,6 +101,9 @@ impl Default for CameraScale{
     }
 }
 
+
+
+
 fn update_camera(
     mut cameras_q: Query<(&mut Transform, &GlobalTransform, &mut CameraController, &Camera)>,
     targets_q: Query<(&Transform, &CameraFollow), (With<CameraFollow>, Without<CameraController>)>,
@@ -120,10 +123,10 @@ fn update_camera(
     }
     
 
-    for ev in evr_scroll.read() {
-        camera_scale.0 -= ev.y * 0.1;
-        camera_scale.0 = camera_scale.0.clamp(0.5, 3.);
-    }
+    //for ev in evr_scroll.read() {
+    //    camera_scale.0 -= ev.y * 0.1;
+    //    camera_scale.0 = camera_scale.0.clamp(0.5, 3.);
+    //}
 
     for (mut camera_transform, glob, mut controller, camera) in cameras_q.iter_mut(){
         controller.scale = camera_scale.0 * camera_scale.0;

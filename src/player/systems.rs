@@ -22,6 +22,7 @@ pub const PLAYER_CG: u32 = 0b0000_0000_0000_0001;
 pub const NPC_CG: u32 = 0b0000_0000_0000_0010;
 pub const STRUCTURES_CG: u32 = 0b0000_0000_0000_0100;
 pub const BULLET_CG: u32 = 0b0000_0000_0000_1000;
+pub const RAYCASTABLE_STRUCT_CG: u32 = 0b0000_0000_0001_0000;
 
 #[derive(Component)]
 pub struct PlayerController{
