@@ -65,7 +65,7 @@ pub fn manage_civilians(
     mut hit_player: EventWriter<HitPlayer>,
     mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
-    let (player_transform, player_entity, mut player) = player_data.single_mut();
+    if let Ok((player_transform, player_entity, mut player)) = player_data.get_single_mut() {
     let player_pos = player_transform.translation.xy();
     let player_ipos = transformer.from_world_i32(player_pos);
     let dt = time.delta_seconds();
@@ -230,6 +230,7 @@ pub fn manage_civilians(
         }
     }
     }
+    }
 }
 
 
@@ -279,7 +280,7 @@ pub fn manage_hunters(
     mut atlas_handles: ResMut<TextureAtlasLayoutHandles>,
     mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
-    let player_data = player_data.single();
+    if let Ok(player_data) = player_data.get_single() {
     let player_pos = player_data.0.translation.xy();
     let player_ipos = transformer.from_world_i32(player_pos);
     let player_vel = player_data.1.accumulated_velocity;
@@ -456,6 +457,7 @@ pub fn manage_hunters(
         }
     }
     }
+    }
 }
 
 fn calculate_intercept(shooter_pos: Vec2, target_pos: Vec2, target_vel: Vec2, proj_vel: f32) -> Option<Vec2> {
@@ -502,37 +504,38 @@ pub fn process_collisions(
     mut kill_npc: EventWriter<KillNpc>,
     mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
-    let (player_entity, player) = player.single_mut();
-    for collision_event in collision_events.read() {
-        if let CollisionEvent::Started(reciever_entity, sender_entity, _) = collision_event {
-            // println!("{:?}", collision_event);
-            // player appears to always be reciever
-            let sender_entity = *sender_entity;
-            if let Ok(_) = projectiles.get(sender_entity) {
-                if *reciever_entity == player_entity {
-                    hit_player.send(HitPlayer { dmg_type: 0});
-                }
-                commands.entity(sender_entity).despawn();
-            } else if let Ok(mut state) = civilians.get_mut(sender_entity) {
-                if day_cycle.is_night {
-                    // kill civilian
-                    *state = NpcState::Dead;
-                    kill_npc.send(KillNpc { npc_type: 0 });
-                    play_sound.send(PlaySoundEvent::Kill);
-                }
-            } else if let Ok(mut state) = hunters.get_mut(sender_entity) {
-                if day_cycle.is_night {
-                    // kill hunter
-                    *state = NpcState::Dead;
-                    kill_npc.send(KillNpc { npc_type: 1 });
-                    play_sound.send(PlaySoundEvent::Kill);
-                } else {
+    if let Ok((player_entity, player)) = player.get_single_mut() {
+        for collision_event in collision_events.read() {
+            if let CollisionEvent::Started(reciever_entity, sender_entity, _) = collision_event {
+                // println!("{:?}", collision_event);
+                // player appears to always be reciever
+                let sender_entity = *sender_entity;
+                if let Ok(_) = projectiles.get(sender_entity) {
                     if *reciever_entity == player_entity {
-                        hit_player.send(HitPlayer { dmg_type: 2});
+                        hit_player.send(HitPlayer { dmg_type: 0});
                     }
+                    commands.entity(sender_entity).despawn();
+                } else if let Ok(mut state) = civilians.get_mut(sender_entity) {
+                    if day_cycle.is_night {
+                        // kill civilian
+                        *state = NpcState::Dead;
+                        kill_npc.send(KillNpc { npc_type: 0 });
+                        play_sound.send(PlaySoundEvent::Kill);
+                    }
+                } else if let Ok(mut state) = hunters.get_mut(sender_entity) {
+                    if day_cycle.is_night {
+                        // kill hunter
+                        *state = NpcState::Dead;
+                        kill_npc.send(KillNpc { npc_type: 1 });
+                        play_sound.send(PlaySoundEvent::Kill);
+                    } else {
+                        if *reciever_entity == player_entity {
+                            hit_player.send(HitPlayer { dmg_type: 2});
+                        }
+                    }
+                } else if let Ok(_) = structures.get(sender_entity) {
+                    commands.entity(player_entity).remove::<Sensor>();
                 }
-            } else if let Ok(_) = structures.get(sender_entity) {
-                commands.entity(player_entity).remove::<Sensor>();
             }
         }
     }

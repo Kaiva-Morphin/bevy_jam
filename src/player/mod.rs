@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use components::{HitPlayer, KillNpc};
+use components::{DeathTimer, HitPlayer, KillNpc, KillPlayer};
 use systems::*;
 use upgrade_ui::interact_upgrade_button;
 
@@ -16,8 +16,10 @@ impl Plugin for PlayerPlugin {
         app
         .add_event::<HitPlayer>()
         .add_event::<KillNpc>()
+        .add_event::<KillPlayer>()
+        .insert_resource(DeathTimer {timer: Timer::from_seconds(5., TimerMode::Repeating)})
         .add_systems(Startup, (spawn_player_first_time, spawn_score).chain())
-        .add_systems(Update, ((player_controller, hit_player, kill_npc, manage_xp).run_if(in_state(GameState::InGame)), interact_upgrade_button))
+        .add_systems(Update, ((player_controller, hit_player, kill_npc, manage_xp, kill_player).run_if(in_state(GameState::InGame)), interact_upgrade_button))
         ;
     }
 }
