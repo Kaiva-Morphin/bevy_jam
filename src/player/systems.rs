@@ -141,7 +141,7 @@ pub fn player_controller(
                 commands.entity(player_entity).insert(
                     CollisionGroups::new(
                         Group::from_bits(PLAYER_CG).unwrap(),
-                        Group::from_bits(STRUCTURES_CG).unwrap()
+                        Group::from_bits(STRUCTURES_CG | RAYCASTABLE_STRUCT_CG).unwrap()
                     ),
                 );
             }
@@ -162,7 +162,7 @@ pub fn player_controller(
             commands.entity(player_entity).insert(
             CollisionGroups::new(
                 Group::from_bits(PLAYER_CG).unwrap(),
-                Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG).unwrap()
+                Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG | RAYCASTABLE_STRUCT_CG).unwrap()
             )).remove::<Sensor>();
         }
     }

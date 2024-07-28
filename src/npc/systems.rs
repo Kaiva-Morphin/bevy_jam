@@ -77,6 +77,9 @@ pub fn manage_civilians(
         mut attack_timer, mut particle_timer,
         civ_entity) in civilians_data.iter_mut() {
         let civ_pos = civ_transform.translation.xy();
+        if civ_pos.distance(player_pos) > 1000. {
+            continue;
+        }
         let civ_ipos = transformer.from_world_i32(civ_pos);
         let direction = player_pos - civ_pos;
         let length = direction.length();
@@ -294,6 +297,9 @@ pub fn manage_hunters(
         hunter_controller.linvel = Vec2::ZERO;
         let hunter_pos = hunter_transform.translation.xy();
         let hunter_ipos = transformer.from_world_i32(hunter_pos);
+        if hunter_pos.distance(player_pos) > 1000. {
+            continue;
+        }
         let direction = player_pos - hunter_pos;
         let length = direction.length();
         let mut player_in_sight = false;

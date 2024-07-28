@@ -29,7 +29,7 @@ impl Plugin for TileMapPlugin {
         app.add_systems(Update, tilemap::watcher);
         app.add_systems(Update, (tilemap::spawn_tile_collision, update_emitter_tiles, setup_camera_bounds, update_unit_grid, tilemap::spawn_tile_tree, tilemap::spawn_raycastable_tile_collision, tilemap::update_animated_trees));
         app.add_systems(PreUpdate, trespassable_spawn_listener);
-        app.register_ldtk_entity::<HunterSpawnerBundle>("HunterSpawner");
+        app.register_ldtk_entity::<HunterSpawnerBundle>("EnemySpawner");
         app.register_ldtk_entity::<CivilianSpawnerBundle>("CivilianSpawner");
         app.register_ldtk_int_cell_for_layer::<tilemap::RaycastableTileObsticleBundle>("Ground", 1);
         app.register_ldtk_int_cell_for_layer::<tilemap::TiledTreeBundle>("Ground", 3);
