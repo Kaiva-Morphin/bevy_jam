@@ -68,7 +68,7 @@ pub fn spawn_player(
         Name::new("Player"),
         CameraFollow{order: 0, speed: 10.},
         Player {hp: 100., xp: 0., score: 0., max_speed: 80., accumulation_grain: 600., 
-            phys_res: 0.2, hp_gain: 10., xp_gain: 10., max_xp: 100., max_hp: 100. },
+            phys_res: 0.2, hp_gain: 10., xp_gain: 10., max_xp: 100., max_hp: 100., is_dead: false},
         AnimationController::default(),
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED_Z,
@@ -190,14 +190,14 @@ pub fn hit_player(
                 player.hp -= 15. * (1. - player.phys_res)
             }
         }
-        if player.hp < 0. {
+        if player.hp < 0. && !player.is_dead {
             kill_player.send(KillPlayer);
         }
     }
 }
 
 pub fn kill_player(
-    player_entity: Query<Entity, With<Player>>,
+    mut player_entity: Query<(Entity, &mut Player)>,
     mut kill_player: EventReader<KillPlayer>,
     mut play_sound: EventWriter<PlaySoundEvent>,
     mut commands: Commands,
@@ -210,10 +210,11 @@ pub fn kill_player(
 ) {
     let dt = time.delta_seconds();
     let t = death_timer.timer.duration().as_secs_f32() - death_timer.timer.elapsed_secs();
+    let (entity, mut player) = player_entity.single_mut();
     for _ in kill_player.read() {
-        let entity = player_entity.single();
         play_sound.send(PlaySoundEvent::Kill);
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).insert(Visibility::Hidden);
+        player.is_dead = true;
         death_timer.timer.tick(Duration::from_secs_f32(dt));
         spawn_death_text(&mut commands, &asset_server, t);
     }
@@ -221,7 +222,12 @@ pub fn kill_player(
         death_timer.timer.tick(Duration::from_secs_f32(dt));
         update_death_text(t, &mut death_time);
         if death_timer.timer.finished() {
-            spawn_player(&mut commands, &asset_server, &mut layout_handles);
+            commands.entity(entity).insert((
+                Visibility::Visible,
+                Transform::from_xyz(16., 16., 0.),
+                Player {hp: 100., xp: 0., score: 0., max_speed: 80., accumulation_grain: 600., 
+                    phys_res: 0.2, hp_gain: 10., xp_gain: 10., max_xp: 100., max_hp: 100., is_dead: false}
+            ));
             death_timer.timer.set_elapsed(Duration::ZERO);
             for entity in death_text.iter() {
                 commands.entity(entity).despawn();

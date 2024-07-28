@@ -12,6 +12,7 @@ pub struct Player {
     pub xp_gain: f32,
     pub max_xp: f32,
     pub max_hp: f32,
+    pub is_dead: bool,
 } 
 // armor (phys res); speed; hp gain; xp gain; max hp;
 

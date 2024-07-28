@@ -66,6 +66,7 @@ pub fn manage_civilians(
     mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
     if let Ok((player_transform, player_entity, mut player)) = player_data.get_single_mut() {
+    if player.is_dead {return;}
     let player_pos = player_transform.translation.xy();
     let player_ipos = transformer.from_world_i32(player_pos);
     let dt = time.delta_seconds();
@@ -275,7 +276,7 @@ pub fn manage_hunters(
     mut hunters_data: Query<(&Transform, &mut Velocity,
         &mut NpcVelAccum, &mut NpcPath, &mut HunterTimer, &mut NpcState,
         &mut ChillTimer, &mut AnimationController, &mut PlayerLastPos, Entity), Without<Player>>,
-    player_data: Query<(&Transform, &PlayerController, Entity), With<Player>>,
+    player_data: Query<(&Transform, &PlayerController, Entity, &Player)>,
     transformer: Res<TransformToGrid>,
     trespassable: Res<TrespassableCells>,
     rapier_context: Res<RapierContext>,
@@ -284,6 +285,7 @@ pub fn manage_hunters(
     mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
     if let Ok(player_data) = player_data.get_single() {
+    if player_data.3.is_dead {return;}
     let player_pos = player_data.0.translation.xy();
     let player_ipos = transformer.from_world_i32(player_pos);
     let player_vel = player_data.1.accumulated_velocity;

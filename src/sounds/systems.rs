@@ -54,7 +54,6 @@ pub fn manage_background(
         let easing = AudioEasing::OutPowf(2.);
         
         if day_cycle.is_night { // translating into day
-            println!("play day");
             night_channel.stop()
             .fade_out(AudioTween::new(dur, easing))
             ;
@@ -65,7 +64,6 @@ pub fn manage_background(
             .with_volume(0.4)
             ;
         } else { // translating into night
-            println!("play night");
             day_channel.stop()
             .fade_out(AudioTween::new(dur, easing))
             ;
