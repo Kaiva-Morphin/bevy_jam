@@ -357,31 +357,10 @@ fn late_setup(
 fn update_settings(
     mut settings: Query<&mut PostProcessUniform>, 
     camera: Query<&GlobalTransform, With<MainCamera>>,
-    time: Res<Time>,
-    mut egui_context: EguiContexts,
-    
+    time: Res<Time>,    
 ) {
     let mut settings = settings.single_mut();
-    let ctx = egui_context.ctx_mut();
     let camera_transform = camera.single().translation().xy();
-    egui::Window::new("POSTFX").show(ctx, |ui|{
-        ui.add(Slider::new(&mut settings.daytime, 0. ..= 1.).text("DAYTIME"));
-        ui.add(Slider::new(&mut settings.vignette_strength, 0. ..= 15.).text("VIGNETTE"));
-        ui.add(Slider::new(&mut settings.wave_strength, 0. ..= 100.).text("WAVE"));
-        ui.collapsing("COLORS", |ui|{
-            let mut rgb_night = settings.night_color.xyz().to_array();
-            let mut rgb_day = settings.day_color.xyz().to_array();
-            
-            ui.label("DAY COLOR");
-            ui.color_edit_button_rgb(&mut rgb_day);
-            ui.separator();
-            ui.label("NIGHT COLOR");
-            ui.color_edit_button_rgb(&mut rgb_night);
-            
-            settings.night_color = Vec3::from_array(rgb_night).extend(1.);
-            settings.day_color = Vec3::from_array(rgb_day).extend(1.);
-        });
-    });
     settings.translation = camera_transform;
     settings.time = time.elapsed_seconds();
 }

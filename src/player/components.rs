@@ -10,6 +10,7 @@ pub struct Player {
     pub phys_res: f32,
     pub hp_gain: f32,
     pub xp_gain: f32,
+    pub max_xp: f32,
     pub max_hp: f32,
 } 
 // armor (phys res); speed; hp gain; xp gain; max hp;
@@ -27,4 +28,18 @@ pub struct HitPlayer {
 #[derive(Event)]
 pub struct KillNpc {
     pub npc_type: u8,
+}
+
+#[derive(Component)]
+pub enum UpgradeButton {
+    MaxHp,
+    Armor,
+    HpGain,
+    XpGain,
+    Speed,
+}
+
+#[derive(Component)]
+pub struct ParentEntity {
+    pub entity: Entity
 }

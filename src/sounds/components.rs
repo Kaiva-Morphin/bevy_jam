@@ -19,6 +19,8 @@ pub struct AudioHandles {
     pub hit: Vec<Handle<bevy_kira_audio::AudioSource>>,
     pub kill: Vec<Handle<bevy_kira_audio::AudioSource>>,
     pub throw: Handle<bevy_kira_audio::AudioSource>,
+    pub select: Handle<bevy_kira_audio::AudioSource>,
+    pub selected: Handle<bevy_kira_audio::AudioSource>,
 }
 
 #[derive(Event)]
@@ -28,4 +30,6 @@ pub enum PlaySoundEvent {
     Hit,
     Kill,
     Throw,
+    Select,
+    Selected,
 }

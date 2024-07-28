@@ -38,6 +38,7 @@ fn main() {
         is_night: true,
         is_translating: false,
     })
+    .add_event::<PauseEvent>()
     .add_plugins((
         PlayerPlugin,
         NPCPlugin,
@@ -45,7 +46,7 @@ fn main() {
         AudioPlugin,
     ))
     .add_systems(Update, (
-        update_daycycle.run_if(in_state(GameState::InGame)), 
+        (update_daycycle, update_score).run_if(in_state(GameState::InGame)), 
         simple_anim_update.run_if(in_state(GameState::InGame)),
         update_blood_particles.run_if(in_state(GameState::InGame)),
         pause_game

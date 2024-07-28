@@ -1,11 +1,13 @@
 use bevy::prelude::*;
 use components::{HitPlayer, KillNpc};
 use systems::*;
+use upgrade_ui::interact_upgrade_button;
 
-use crate::systems::GameState;
+use crate::{spawn_score, systems::GameState};
 
 pub mod systems;
 pub mod components;
+pub mod upgrade_ui;
 
 pub struct PlayerPlugin;
 
@@ -14,8 +16,8 @@ impl Plugin for PlayerPlugin {
         app
         .add_event::<HitPlayer>()
         .add_event::<KillNpc>()
-        .add_systems(Startup, spawn_player)
-        .add_systems(Update, player_controller.run_if(in_state(GameState::InGame)))
+        .add_systems(Startup, (spawn_player, spawn_score).chain())
+        .add_systems(Update, ((player_controller, hit_player, kill_npc, manage_xp).run_if(in_state(GameState::InGame)), interact_upgrade_button))
         ;
     }
 }

@@ -25,13 +25,15 @@ pub fn load_audio(
     ]);
     audio_handles.hit.extend(vec![
         asset_server.load("sounds/hit.wav"),
-        asset_server.load("sounds/hit1.wav"),
+        // asset_server.load("sounds/hit1.wav"),
         asset_server.load("sounds/hit2.wav"),
     ]);
     audio_handles.kill.extend(vec![
         asset_server.load("sounds/kill.wav"),
         asset_server.load("sounds/kill1.wav"),
     ]);
+    audio_handles.select = asset_server.load("sounds/select.wav");
+    audio_handles.selected = asset_server.load("sounds/selected.wav");
     
     night_channel.play(audio_handles.night.clone_weak())
     .start_from(0.)
@@ -107,6 +109,12 @@ pub fn play_sounds(
             PlaySoundEvent::Throw => {
                 sfx_channel.play(audio_handles.throw.clone_weak());
             }
+            PlaySoundEvent::Select => {
+                sfx_channel.play(audio_handles.select.clone_weak());
+            },
+            PlaySoundEvent::Selected => {
+                sfx_channel.play(audio_handles.selected.clone_weak());
+            },
         }
     }
 }

@@ -3,16 +3,20 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-use crate::characters::animation::{AnimationController, PartType};
+use crate::characters::animation::{spawn_player_animation_bundle, AnimationController, PartType};
 use crate::core::camera::plugin::CameraFollow;
+use crate::core::functions::TextureAtlasLayoutHandles;
+use crate::core::ui::PlayerUINode;
 use crate::sounds::components::PlaySoundEvent;
 use crate::systems::DayCycle;
+use crate::PauseEvent;
 use bevy::math::{uvec2, vec2};
 use bevy_inspector_egui::bevy_egui::EguiContexts;
 use bevy_inspector_egui::egui::{self, Slider};
 use pathfinding::num_traits::Signed;
 
 use super::components::*;
+use super::upgrade_ui::lvl_up;
 
 pub const PLAYER_CG: u32 = 0b0000_0000_0000_0001;
 pub const NPC_CG: u32 = 0b0000_0000_0000_0010;
@@ -45,15 +49,17 @@ pub struct PlayerAnimationState{
 
 pub fn spawn_player(
     mut commands: Commands,
-    asset_server: ResMut<AssetServer>
+    asset_server: Res<AssetServer>,
+    mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
 ){
-    commands.spawn((
+    let entity = spawn_player_animation_bundle(&mut commands, &asset_server, &mut layout_handles);
+    commands.entity(entity).insert((
         VisibilityBundle::default(),
         TransformBundle::from_transform(Transform::from_xyz(16., 16., 0.)),
         Name::new("Player"),
         CameraFollow{order: 0, speed: 10.},
         Player {hp: 100., xp: 0., score: 0., max_speed: 80., accumulation_grain: 600., 
-            phys_res: 0., hp_gain: 1., xp_gain: 1., max_hp: 100. },
+            phys_res: 0.2, hp_gain: 10., xp_gain: 10., max_xp: 100., max_hp: 100. },
         AnimationController::default(),
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED_Z,
@@ -67,17 +73,18 @@ pub fn spawn_player(
             Group::from_bits(PLAYER_CG).unwrap(),
             Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG).unwrap()
         ),
-    )).with_children(|commands| {commands.spawn((
-        PartType::Body{variant: 0, variants: 1},
-        SpriteBundle{
-            texture: asset_server.load("player/vampire.png"),
-            ..default()
-        },
-        TextureAtlas{
-            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 20), 7, 3, Some(uvec2(1, 1)), None)),
-            index: 2
-        },
-    ));});
+    ));
+    // .with_children(|commands| {commands.spawn((
+    //     PartType::Body{variant: 0, variants: 1},
+    //     SpriteBundle{
+    //         texture: asset_server.load("player/vampire.png"),
+    //         ..default()
+    //     },
+    //     TextureAtlas{
+    //         layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 20), 7, 3, Some(uvec2(1, 1)), None)),
+    //         index: 2
+    //     },
+    // ));});
 }
 
 pub fn player_controller(
@@ -163,23 +170,32 @@ pub fn player_controller(
     }
 }
 
+fn g(x: f32) -> f32 {
+    let x = 3. - 5. * x;
+    5. * std::f32::consts::E.powf(-(x - 1.639964).powf(2.)/(2.*0.800886f32.powf(2.)))
+}
+
 pub fn hit_player(
+    mut commands: Commands,
     mut hit_player: EventReader<HitPlayer>,
-    mut player: Query<(&mut Player, &mut AnimationController)>,
+    mut player: Query<(&mut Player, &mut AnimationController, Entity)>,
+    mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
-    let (mut player, mut animation_controller) = player.single_mut();
+    let (mut player, mut animation_controller, player_entity) = player.single_mut();
     for hit in hit_player.read() {
+        println!("{:?}", player.hp);
         animation_controller.play_hurt();
         if hit.dmg_type == 0 { // proj
-            player.hp -= 10. * (1. - player.phys_res)
+            player.hp -= player.max_hp * 0.1 * (1. - player.phys_res)
         } else if hit.dmg_type == 1 { // civ
-            player.hp -= 5. * (1. - player.phys_res)
+            player.hp -= player.max_hp * 0.05 * (1. - player.phys_res)
         } else if hit.dmg_type == 2 { // hun
             player.hp -= 15. * (1. - player.phys_res)
         }
     }
     if player.hp < 0. {
-        println!("PIZDA")
+        play_sound.send(PlaySoundEvent::Kill);
+        commands.entity(player_entity).despawn_recursive();
     }
 }
 
@@ -190,16 +206,31 @@ pub fn kill_npc(
     let mut player = player.single_mut();
     for kill in kill_npc.read() {
         player.hp = (player.hp + player.hp_gain).clamp(0.0, player.max_hp);
-        player.xp += player.xp_gain;
         if kill.npc_type == 0 { // civ
             player.score += 100.;
+            player.xp += player.xp_gain;
         } else if kill.npc_type == 1 { // hun
             player.score += 500.;
+            player.xp += player.xp_gain * 3.;
         }
     }
 }
 
-fn g(x: f32) -> f32 {
-    let x = 3. - 5. * x;
-    5. * std::f32::consts::E.powf(-(x - 1.639964).powf(2.)/(2.*0.800886f32.powf(2.)))
+pub fn manage_xp(
+    mut player: Query<&mut Player>,
+    mut play_sound: EventWriter<PlaySoundEvent>,
+    mut commands: Commands,
+    mut pause_event: EventWriter<PauseEvent>,
+    asset_server: Res<AssetServer>,
+    mut t: Local<bool>,
+) {
+    let mut player = player.single_mut();
+    if player.xp > player.max_xp {
+        player.xp -= player.max_hp;
+        player.max_xp *= 1.2;
+        play_sound.send(PlaySoundEvent::LvlUp);
+        lvl_up(&mut commands, &asset_server);
+        pause_event.send(PauseEvent);
+        *t = true;
+    }
 }
