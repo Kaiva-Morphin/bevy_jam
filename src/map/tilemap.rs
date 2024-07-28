@@ -710,7 +710,6 @@ pub fn spawn_raycastable_tile_collision(
                             ))
                             .insert((
                                 RigidBody::Fixed,
-                                Structure,
                                 CollisionGroups::new(
                                     Group::from_bits(RAYCASTABLE_STRUCT_CG).unwrap(),
                                     Group::ALL,

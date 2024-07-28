@@ -16,7 +16,7 @@ use bevy_inspector_egui::egui::{self, Slider};
 use pathfinding::num_traits::Signed;
 
 use super::components::*;
-use super::upgrade_ui::lvl_up;
+use super::upgrade_ui::{lvl_up, spawn_death_text, update_death_text};
 
 pub const PLAYER_CG: u32 = 0b0000_0000_0000_0001;
 pub const NPC_CG: u32 = 0b0000_0000_0000_0010;
@@ -80,7 +80,7 @@ pub fn spawn_player(
         Sleeping::disabled(),
         CollisionGroups::new(
             Group::from_bits(PLAYER_CG).unwrap(),
-            Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG).unwrap()
+            Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG | RAYCASTABLE_STRUCT_CG).unwrap()
         ),
     ));
 }
@@ -95,9 +95,9 @@ pub fn player_controller(
     mut dash_dir: Local<Vec2>,
     mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
-    let (mut character_controller, mut controller,
+    if let Ok((mut character_controller, mut controller,
         mut animation_controller, mut dash_timer,
-        mut player, player_entity) = player_q.single_mut();
+        mut player, player_entity)) = player_q.get_single_mut() {
     character_controller.linvel = Vec2::ZERO;
     let dt = time.delta_seconds();
     if dash_timer.timer.elapsed_secs() == 0. {
@@ -166,6 +166,7 @@ pub fn player_controller(
             )).remove::<Sensor>();
         }
     }
+    }
 }
 
 fn g(x: f32) -> f32 {
@@ -174,29 +175,58 @@ fn g(x: f32) -> f32 {
 }
 
 pub fn hit_player(
-    mut commands: Commands,
     mut hit_player: EventReader<HitPlayer>,
-    mut player: Query<(&mut Player, &mut AnimationController, Entity)>,
-    mut play_sound: EventWriter<PlaySoundEvent>,
-    asset_server: Res<AssetServer>,
-    mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
+    mut player: Query<(&mut Player, &mut AnimationController)>,
+    mut kill_player: EventWriter<KillPlayer>,
 ) {
-    let (mut player, mut animation_controller, player_entity) = player.single_mut();
-    for hit in hit_player.read() {
-        println!("{:?}", player.hp);
-        animation_controller.play_hurt();
-        if hit.dmg_type == 0 { // proj
-            player.hp -= player.max_hp * 0.1 * (1. - player.phys_res)
-        } else if hit.dmg_type == 1 { // civ
-            player.hp -= player.max_hp * 0.05 * (1. - player.phys_res)
-        } else if hit.dmg_type == 2 { // hun
-            player.hp -= 15. * (1. - player.phys_res)
+    if let Ok((mut player, mut animation_controller)) = player.get_single_mut() {
+        for hit in hit_player.read() {
+            animation_controller.play_hurt();
+            if hit.dmg_type == 0 { // proj
+                player.hp -= player.max_hp * 0.1 * (1. - player.phys_res)
+            } else if hit.dmg_type == 1 { // civ
+                player.hp -= player.max_hp * 0.05 * (1. - player.phys_res)
+            } else if hit.dmg_type == 2 { // hun
+                player.hp -= 15. * (1. - player.phys_res)
+            }
+        }
+        if player.hp < 0. {
+            kill_player.send(KillPlayer);
         }
     }
-    if player.hp < 0. {
+}
+
+pub fn kill_player(
+    player_entity: Query<Entity, With<Player>>,
+    mut kill_player: EventReader<KillPlayer>,
+    mut play_sound: EventWriter<PlaySoundEvent>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
+    mut death_timer: ResMut<DeathTimer>,
+    time: Res<Time>,
+    mut death_time: Query<&mut Text, With<DeathTime>>,
+    death_text: Query<Entity, With<DeathText>>,
+) {
+    let dt = time.delta_seconds();
+    let t = death_timer.timer.duration().as_secs_f32() - death_timer.timer.elapsed_secs();
+    for _ in kill_player.read() {
+        let entity = player_entity.single();
         play_sound.send(PlaySoundEvent::Kill);
-        commands.entity(player_entity).despawn_recursive();
-        spawn_player(&mut commands, &asset_server, &mut layout_handles);
+        commands.entity(entity).despawn_recursive();
+        death_timer.timer.tick(Duration::from_secs_f32(dt));
+        spawn_death_text(&mut commands, &asset_server, t);
+    }
+    if death_timer.timer.elapsed_secs() != 0. {
+        death_timer.timer.tick(Duration::from_secs_f32(dt));
+        update_death_text(t, &mut death_time);
+        if death_timer.timer.finished() {
+            spawn_player(&mut commands, &asset_server, &mut layout_handles);
+            death_timer.timer.set_elapsed(Duration::ZERO);
+            for entity in death_text.iter() {
+                commands.entity(entity).despawn();
+            }
+        }
     }
 }
 
@@ -204,15 +234,16 @@ pub fn kill_npc(
     mut kill_npc: EventReader<KillNpc>,
     mut player: Query<&mut Player>,
 ) {
-    let mut player = player.single_mut();
-    for kill in kill_npc.read() {
-        player.hp = (player.hp + player.hp_gain).clamp(0.0, player.max_hp);
-        if kill.npc_type == 0 { // civ
-            player.score += 100.;
-            player.xp += player.xp_gain;
-        } else if kill.npc_type == 1 { // hun
-            player.score += 500.;
-            player.xp += player.xp_gain * 3.;
+    if let Ok(mut player) = player.get_single_mut() {
+        for kill in kill_npc.read() {
+            player.hp = (player.hp + player.hp_gain).clamp(0.0, player.max_hp);
+            if kill.npc_type == 0 { // civ
+                player.score += 100.;
+                player.xp += player.xp_gain;
+            } else if kill.npc_type == 1 { // hun
+                player.score += 500.;
+                player.xp += player.xp_gain * 3.;
+            }
         }
     }
 }
@@ -225,13 +256,14 @@ pub fn manage_xp(
     asset_server: Res<AssetServer>,
     mut t: Local<bool>,
 ) {
-    let mut player = player.single_mut();
-    if player.xp > player.max_xp {
-        player.xp -= player.max_hp;
-        player.max_xp *= 1.2;
-        play_sound.send(PlaySoundEvent::LvlUp);
-        lvl_up(&mut commands, &asset_server);
-        pause_event.send(PauseEvent);
-        *t = true;
+    if let Ok(mut player) = player.get_single_mut() {
+        if player.xp > player.max_xp {
+            player.xp -= player.max_hp;
+            player.max_xp *= 1.2;
+            play_sound.send(PlaySoundEvent::LvlUp);
+            lvl_up(&mut commands, &asset_server);
+            pause_event.send(PauseEvent);
+            *t = true;
+        }
     }
 }

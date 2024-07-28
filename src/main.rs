@@ -45,6 +45,8 @@ fn main() {
         CharacterAnimationPlugin,
         AudioPlugin,
     ))
+    .add_systems(Startup, spawn_starter_screen)
+    .add_systems(Update, interact_start_button)
     .add_systems(Update, (
         (update_daycycle, update_score).run_if(in_state(GameState::InGame)), 
         simple_anim_update.run_if(in_state(GameState::InGame)),

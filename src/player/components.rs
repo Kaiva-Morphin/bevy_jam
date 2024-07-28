@@ -43,3 +43,17 @@ pub enum UpgradeButton {
 pub struct ParentEntity {
     pub entity: Entity
 }
+
+#[derive(Event)]
+pub struct KillPlayer;
+
+#[derive(Resource)]
+pub struct DeathTimer {
+    pub timer: Timer,
+}
+
+#[derive(Component)]
+pub struct DeathTime;
+
+#[derive(Component)]
+pub struct DeathText;

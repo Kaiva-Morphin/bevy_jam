@@ -1,10 +1,10 @@
 use std::time::Duration;
 
-use bevy::{math::uvec2, prelude::*};
+use bevy::{color::palettes::css::{BLUE, RED}, math::uvec2, prelude::*};
 use bevy_light_2d::light::AmbientLight2d;
 use pathfinding::num_traits::{Euclid, Signed};
 
-use crate::{characters::animation::AnimationController, core::{camera::plugin::MainCamera, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, player::components::Player};
+use crate::{characters::animation::AnimationController, core::{camera::plugin::MainCamera, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, player::components::{ParentEntity, Player, UpgradeButton}, sounds::components::PlaySoundEvent};
 
 pub const TRANSLATION_DURATION: f32 = 1.0;
 pub const DAY_DURATION: f32 = 1.0;
@@ -127,5 +127,108 @@ pub fn update_score(
     if let Ok(player) = player.get_single() {
         let mut score = score.single_mut();
         score.sections[0].value = format!("Score: {:?}", player.score as i32)
+    }
+}
+
+#[derive(Component)]
+pub struct StartButton;
+
+pub fn spawn_starter_screen(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut pause_event: EventWriter<PauseEvent>,
+) {
+    pause_event.send(PauseEvent);
+    let font = asset_server.load("fonts/Monocraft.ttf");
+    let parent = commands.spawn((
+        ImageBundle {
+            style: Style {
+                align_self: AlignSelf::Center,
+                justify_self: JustifySelf::Center,
+                justify_content: JustifyContent::Center,
+                justify_items: JustifyItems::Center,
+                flex_direction: FlexDirection::Column,
+                width: Val::Px(500.),
+                height: Val::Px(800.),
+                ..default()
+            },
+            image: UiImage::from(asset_server.load("scroll.png")),
+            ..default()
+        },
+        Name::new("StarterScreen"),
+    )).with_children(|parent| {
+        parent.spawn(TextBundle {
+            style: Style {
+                width: Val::Percent(40.),
+                height: Val::Percent(40.),
+                align_self: AlignSelf::Center,
+                justify_self: JustifySelf::Center,
+                ..default()
+            },
+            background_color: BackgroundColor::from(Color::Srgba(BLUE)),
+            text: Text {
+                sections: vec![TextSection::new(
+                    "IOHA[OGHohuaofh8h8=924y-r89h[nofa'lhu[ioa'hgou'shf[uio'nlk",
+                    TextStyle { font: font.clone_weak(), font_size: 16., color: Color::srgb_u8(169, 96, 45) })],
+                ..default()
+            },
+            ..default()
+        });
+    }).id();
+    let child = commands.spawn((ButtonBundle {
+        style: Style {
+            width: Val::Px(150.),
+            height: Val::Px(30.),
+            justify_items: JustifyItems::Center,
+            justify_content: JustifyContent::Center,
+            align_self: AlignSelf::Center,
+            justify_self: JustifySelf::Center,
+            margin: UiRect::top(Val::Px(30.)),
+            ..default()
+        },
+        image: UiImage::from(asset_server.load("button.png")),
+        ..default()
+    },
+    StartButton,
+    ParentEntity {entity: parent},
+    )).with_children(|parent| {
+        parent.spawn(TextBundle {
+            style: Style {
+                align_self: AlignSelf::Center,
+                justify_self: JustifySelf::Center,
+                ..default()
+            },
+            text: Text {
+                sections: vec![TextSection::new("Start", TextStyle { font, font_size: 16., color: Color::srgb_u8(169, 96, 45) })],
+                ..default()
+            },
+            ..default()
+        });
+    }).id();
+    commands.entity(parent).add_child(child);
+}
+
+pub fn interact_start_button(
+    mut commands: Commands,
+    mut button_q: Query<(&Interaction, &mut UiImage, &ParentEntity), (With<StartButton>, Changed<Interaction>)>,
+    mut pause_event: EventWriter<PauseEvent>,
+    mut play_sound: EventWriter<PlaySoundEvent>,
+    asset_server: Res<AssetServer>,
+) {
+    if let Ok((interaction, mut image, parent_entity)) = button_q.get_single_mut() {
+        match *interaction {
+            Interaction::Pressed => {
+                commands.entity(parent_entity.entity).despawn_recursive();
+                play_sound.send(PlaySoundEvent::Selected);
+                pause_event.send(PauseEvent);
+            }
+            Interaction::Hovered => {
+                play_sound.send(PlaySoundEvent::Select);
+                *image = UiImage::from(asset_server.load("select_button.png"));
+            }
+            Interaction::None => {
+                *image = UiImage::from(asset_server.load("button.png"));
+            }
+        }
     }
 }
