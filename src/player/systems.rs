@@ -47,12 +47,20 @@ pub struct PlayerAnimationState{
     pub dir: Direction
 }
 
-pub fn spawn_player(
+pub fn spawn_player_first_time(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
+) {
+    spawn_player(&mut commands, &asset_server, &mut layout_handles);
+}
+
+pub fn spawn_player(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
 ){
-    let entity = spawn_player_animation_bundle(&mut commands, &asset_server, &mut layout_handles);
+    let entity = spawn_player_animation_bundle(commands, asset_server, layout_handles);
     commands.entity(entity).insert((
         VisibilityBundle::default(),
         TransformBundle::from_transform(Transform::from_xyz(16., 16., 0.)),
@@ -74,17 +82,6 @@ pub fn spawn_player(
             Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG).unwrap()
         ),
     ));
-    // .with_children(|commands| {commands.spawn((
-    //     PartType::Body{variant: 0, variants: 1},
-    //     SpriteBundle{
-    //         texture: asset_server.load("player/vampire.png"),
-    //         ..default()
-    //     },
-    //     TextureAtlas{
-    //         layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(14, 20), 7, 3, Some(uvec2(1, 1)), None)),
-    //         index: 2
-    //     },
-    // ));});
 }
 
 pub fn player_controller(
@@ -180,6 +177,8 @@ pub fn hit_player(
     mut hit_player: EventReader<HitPlayer>,
     mut player: Query<(&mut Player, &mut AnimationController, Entity)>,
     mut play_sound: EventWriter<PlaySoundEvent>,
+    asset_server: Res<AssetServer>,
+    mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
 ) {
     let (mut player, mut animation_controller, player_entity) = player.single_mut();
     for hit in hit_player.read() {
@@ -196,6 +195,7 @@ pub fn hit_player(
     if player.hp < 0. {
         play_sound.send(PlaySoundEvent::Kill);
         commands.entity(player_entity).despawn_recursive();
+        spawn_player(&mut commands, &asset_server, &mut layout_handles);
     }
 }
 

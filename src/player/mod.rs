@@ -16,7 +16,7 @@ impl Plugin for PlayerPlugin {
         app
         .add_event::<HitPlayer>()
         .add_event::<KillNpc>()
-        .add_systems(Startup, (spawn_player, spawn_score).chain())
+        .add_systems(Startup, (spawn_player_first_time, spawn_score).chain())
         .add_systems(Update, ((player_controller, hit_player, kill_npc, manage_xp).run_if(in_state(GameState::InGame)), interact_upgrade_button))
         ;
     }
