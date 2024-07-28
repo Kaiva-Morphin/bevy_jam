@@ -1347,6 +1347,7 @@ dependencies = [
  "pathfinding",
  "rand",
  "rand_chacha",
+ "rayon",
  "weighted_rand",
 ]
 
