@@ -7,7 +7,7 @@ use bevy_rapier2d::prelude::Velocity;
 use bevy_light_2d::prelude::Light2dPlugin;
 use crate::player::components::Player;
 
-use super::tilemap::{self, setup_camera_bounds, update_emitter_tiles, TileObsticle, TransformToGrid};
+use super::tilemap::{self, setup_camera_bounds, update_emitter_tiles, RaycastableTileObsticle, TileObsticle, TransformToGrid};
 
 pub struct TileMapPlugin;
 
@@ -107,6 +107,7 @@ fn update_unit_grid(
 fn trespassable_spawn_listener(
     //mut commands: Commands,
     entity_q: Query<&GridCoords, Added<TileObsticle>>,
+    ray_entity_q: Query<&GridCoords, Added<RaycastableTileObsticle>>,
     mut trespassable_cells: ResMut<TrespassableCells>,
     transfromer: Res<TransformToGrid>,
     //level_query: Query<(Entity, &LevelIid)>,
@@ -118,6 +119,11 @@ fn trespassable_spawn_listener(
         let mut cells_grid = vec![cells_column; transfromer.grid_size.x as usize];
         
         for coords in entity_q.iter(){
+            let pos = ivec2(coords.x, transfromer.grid_size.y - coords.y - 1);
+            cells_grid[pos.x as usize][pos.y as usize] = false;
+        }
+
+        for coords in ray_entity_q.iter(){
             let pos = ivec2(coords.x, transfromer.grid_size.y - coords.y - 1);
             cells_grid[pos.x as usize][pos.y as usize] = false;
         }

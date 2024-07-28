@@ -262,17 +262,7 @@ pub fn spawn_hunter(
         NpcState::Chill,
         ChillTimer {timer: Timer::new(Duration::from_secs(1), TimerMode::Repeating)},
         PlayerLastPos {pos: IVec2::ZERO},
-    )).with_children(|commands| {commands.spawn((
-        PartType::Body{variant: 0, variants: 1},
-        SpriteBundle{
-            texture: asset_server.load("hunter/hunter.png"),
-            ..default()
-        },
-        TextureAtlas{
-            layout: asset_server.add(TextureAtlasLayout::from_grid(uvec2(16, 20), 7, 3, Some(uvec2(1, 1)), None)),
-            index: 2
-        }
-    ));});
+    ));
 }
 
 pub fn manage_hunters(
