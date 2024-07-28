@@ -5,11 +5,8 @@ use bevy_rapier2d::prelude::*;
 use rand::{thread_rng, Rng};
 
 use crate::{
-    characters::animation::*, core::functions::TextureAtlasLayoutHandles, 
-    map::{plugin::{EntitySpawner, TrespassableCells}, 
-    tilemap::{Structure, TransformToGrid}}, 
-    player::{components::{HitPlayer, KillNpc, Player}, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, 
-    stuff::{spawn_angry_particle, spawn_cililian_body, spawn_hunter_body, spawn_question_particle, spawn_warn_particle}, systems::DayCycle
+    characters::animation::*, core::functions::TextureAtlasLayoutHandles, map::{plugin::{EntitySpawner, TrespassableCells}, 
+    tilemap::{Structure, TransformToGrid}}, player::{components::{HitPlayer, KillNpc, Player}, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, sounds::components::PlaySoundEvent, stuff::{spawn_angry_particle, spawn_cililian_body, spawn_hunter_body, spawn_question_particle, spawn_warn_particle}, systems::DayCycle
 };
 
 use super::{components::*, pathfinder};
@@ -67,6 +64,7 @@ pub fn manage_civilians(
     mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
     asset_server: Res<AssetServer>,
     mut hit_player: EventWriter<HitPlayer>,
+    mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
     let (player_transform, player_entity, mut player) = player_data.single_mut();
     let player_pos = player_transform.translation.xy();
@@ -106,6 +104,7 @@ pub fn manage_civilians(
                     spawn_angry_particle(&mut commands, &mut layout_handles, &asset_server, civ_pos.extend(0.));
                 }
                 if attack_timer.timer.elapsed_secs() == 0. {
+                    play_sound.send(PlaySoundEvent::Hit);
                     animation_controller.play_civil_attack();
                 }
                 attack_timer.timer.tick(Duration::from_secs_f32(dt));
@@ -295,6 +294,7 @@ pub fn manage_hunters(
     rapier_context: Res<RapierContext>,
     time: Res<Time>,
     mut atlas_handles: ResMut<TextureAtlasLayoutHandles>,
+    mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
     let player_data = player_data.single();
     let player_pos = player_data.0.translation.xy();
@@ -339,6 +339,7 @@ pub fn manage_hunters(
                 if player_in_sight {
                 if hunter_timer.timer.finished() {
                 animation_controller.play_hunter_throw();
+                play_sound.send(PlaySoundEvent::Throw);
                 if let Some(intercept) = calculate_intercept(hunter_pos, player_pos, player_vel, PROJ_V) {
                     let dir = intercept - hunter_pos;
                     let dir = dir / dir.length();
@@ -522,6 +523,7 @@ pub fn process_collisions(
     day_cycle: Res<DayCycle>,
     mut hit_player: EventWriter<HitPlayer>,
     mut kill_npc: EventWriter<KillNpc>,
+    mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
     let (player_entity, player) = player.single_mut();
     for collision_event in collision_events.read() {
@@ -539,16 +541,14 @@ pub fn process_collisions(
                     // kill civilian
                     *state = NpcState::Dead;
                     kill_npc.send(KillNpc { npc_type: 0 });
-                } else {
-                    if *reciever_entity == player_entity {
-                        hit_player.send(HitPlayer { dmg_type: 1});
-                    }
+                    play_sound.send(PlaySoundEvent::Kill);
                 }
             } else if let Ok(mut state) = hunters.get_mut(sender_entity) {
                 if day_cycle.is_night {
                     // kill hunter
                     *state = NpcState::Dead;
                     kill_npc.send(KillNpc { npc_type: 1 });
+                    play_sound.send(PlaySoundEvent::Kill);
                 } else {
                     if *reciever_entity == player_entity {
                         hit_player.send(HitPlayer { dmg_type: 2});
