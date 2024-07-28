@@ -240,8 +240,9 @@ pub fn update_animated_trees(
 ){
     if perlin.is_none(){*perlin = Some(Perlin::new(rand::thread_rng().gen::<u32>()))}
     let t: f32 = time.elapsed_seconds() * 10.;
-    for (glob, mut transform, tree, mut s) in tree_q.iter_mut() {
-        if tree.0 == 0 {continue;}
+
+    tree_q.par_iter_mut().for_each(|(glob, mut transform, tree, mut s)|{
+        if tree.0 == 0 {return;}
         let offset = vec3(0., -match tree.0 {
             1 => 6.,
             2 => 16.,
@@ -257,7 +258,7 @@ pub fn update_animated_trees(
         s.color = Color::srgb(perlin_inf, perlin_inf, perlin_inf);
         let angle = p * 0.15 + 0.1;
         transform.rotation = Quat::from_rotation_z(angle);
-    }
+    });
 }
 pub fn spawn_tile_tree(
     mut commands: Commands,
