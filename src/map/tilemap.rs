@@ -4,7 +4,7 @@ use bevy_rapier2d::{dynamics::RigidBody, geometry::{Collider, Friction}, prelude
 use noise::{core::perlin, NoiseFn, Perlin};
 use rand::Rng;
 
-use crate::{core::functions::TextureAtlasLayoutHandles, player::systems::STRUCTURES_CG};
+use crate::{core::{camera::plugin::CameraController, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, player::systems::STRUCTURES_CG};
 
 #[derive(Component)]
 pub struct Structure;
@@ -201,6 +201,63 @@ pub fn spawn_tile_tree(
                 ..
             } = level.layer_instances()[0];
         });*/
+    }
+}
+
+pub fn setup_camera_bounds(
+    mut cameras_q: Query<&mut CameraController>,
+    level_query: Query<(&Transform, &LevelIid)>,
+    ldtk_projects: Query<&Handle<LdtkProject>>,
+    level_selection: Res<LevelSelection>,
+    ldtk_project_assets: Res<Assets<LdtkProject>>,
+    mut done: Local<bool>
+) {
+    if *done {return}
+    for (level_transform, level_iid) in &level_query {
+        let ldtk_project = ldtk_project_assets
+            .get(ldtk_projects.single())
+            .expect("Project should be loaded if level has spawned");
+
+        let level = ldtk_project
+            .get_raw_level_by_iid(&level_iid.to_string())
+            .expect("Spawned level should exist in LDtk project");
+
+        if level_selection.is_match(&LevelIndices::default(), level) {
+            for mut cam in cameras_q.iter_mut(){
+                cam.corners = Some((
+                    level_transform.translation.xy(),
+                    level_transform.translation.xy() + vec2(level.px_wid as f32, level.px_hei as f32)
+                ));
+                *done = true;
+            }
+            
+            /*let level_ratio = level.px_wid as f32 / level.px_hei as f32;
+            orthographic_projection.viewport_origin = Vec2::ZERO;
+            if level_ratio > ASPECT_RATIO {
+                // level is wider than the screen
+                let height = (level.px_hei as f32 / 9.).round() * 9.;
+                let width = height * ASPECT_RATIO;
+                orthographic_projection.scaling_mode =
+                    bevy::render::camera::ScalingMode::Fixed { width, height };
+                camera_transform.translation.x =
+                    (player_translation.x - level_transform.translation.x - width / 2.)
+                        .clamp(0., level.px_wid as f32 - width);
+                camera_transform.translation.y = 0.;
+            } else {
+                // level is taller than the screen
+                let width = (level.px_wid as f32 / 16.).round() * 16.;
+                let height = width / ASPECT_RATIO;
+                orthographic_projection.scaling_mode =
+                    bevy::render::camera::ScalingMode::Fixed { width, height };
+                camera_transform.translation.y =
+                    (player_translation.y - level_transform.translation.y - height / 2.)
+                        .clamp(0., level.px_hei as f32 - height);
+                camera_transform.translation.x = 0.;
+            }
+
+            camera_transform.translation.x += level_transform.translation.x;
+            camera_transform.translation.y += level_transform.translation.y;*/
+        }
     }
 }
 

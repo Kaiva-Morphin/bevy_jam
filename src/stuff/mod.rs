@@ -1,11 +1,11 @@
 use std::{f32::consts::PI, time::Duration};
 
-use bevy::{math::{uvec2, vec3}, prelude::*};
+use bevy::{ecs::system::EntityCommands, math::{uvec2, vec3}, prelude::*};
 use bevy_easings::*;
 use bevy_rapier2d::prelude::Velocity;
 use rand::Rng;
 
-use crate::core::{despawn_lifetime::DespawnTimer, functions::TextureAtlasLayoutHandles};
+use crate::core::{despawn_lifetime::DespawnTimer, functions::{ExpDecay, TextureAtlasLayoutHandles}};
 
 pub enum SimpleAnimatedTexture{
     HeartGain,
@@ -401,3 +401,128 @@ pub fn spawn_warn_particle(
     });
 }
 
+#[derive(Component)]
+pub struct FollowingBloodParticle{
+    pub follow: Entity,
+    pub tail: Option<Entity>
+}
+
+#[derive(Component)]
+pub struct FollowingBloodParticlePart{
+    pub max_dist: f32,
+    pub tail: Option<Entity>
+}
+
+fn spawn_blood_particle(
+    commands: &mut Commands,
+    layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
+    asset_server: &Res<AssetServer>,
+    size: f32,
+) -> Entity {
+    if size < 0. {panic!("Neg size  blood particle!")}
+    let mut index = size as usize;
+    if index >= MAX_BLOOD_PARTICLE_SIZE {index = MAX_BLOOD_PARTICLE_SIZE; warn!("Cant spawn blood particle with size {}, clamping", size);}
+    commands.spawn((
+        TransformBundle::default(),
+        VisibilityBundle::default(),
+    )).with_children(|commands|{
+        commands.spawn((
+            SpriteBundle{
+                transform: Transform::from_xyz(0., 0., 10.),
+                texture: asset_server.load("particles/blood.png"),
+                ..default()
+            },
+            TextureAtlas{
+                layout: layout_handles.add_or_load(&asset_server, "BloodParticle", TextureAtlasLayout::from_grid(uvec2(7, 7), 5, 2, Some(uvec2(1, 1)), None)),
+                index,
+                ..default()
+            }
+        ));
+        commands.spawn((
+            SpriteBundle{
+                transform: Transform::from_xyz(0., 0., 0.),
+                texture: asset_server.load("particles/blood.png"),
+                ..default()
+            },
+            TextureAtlas{
+                layout: layout_handles.add_or_load(&asset_server, "BloodParticle", TextureAtlasLayout::from_grid(uvec2(7, 7), 5, 2, Some(uvec2(1, 1)), None)),
+                index: index + MAX_BLOOD_PARTICLE_SIZE,
+                ..default()
+            }
+        ));
+    }).id()
+}
+
+const MAX_BLOOD_PARTICLE_SIZE : usize = 5;
+
+
+pub fn spawn_follow_blood_particle(
+    mut commands: &mut Commands,
+    layout_handles: &mut ResMut<TextureAtlasLayoutHandles>,
+    asset_server: &Res<AssetServer>,
+    follow: Entity,
+    pos: Vec3,
+    length: usize
+){
+    if length == 0 {return}
+    let sizes: Vec<f32> = (0..MAX_BLOOD_PARTICLE_SIZE).map(|v|{v as f32}).collect();
+    let mut to_add: Vec<f32> = vec![];
+    let m = sizes.len() as f32 / length as f32;
+    for i in 0..length{
+        let size_idx = (i as f32 * m).floor() as usize;
+        to_add.push(sizes[size_idx]);
+    }
+    let e = spawn_blood_particle(commands, layout_handles, asset_server, to_add[0]);
+    let root = commands.entity(e).insert((
+        Transform::from_translation(pos),
+        FollowingBloodParticle{follow, tail: None},
+        Name::new("BLOOD ROOT"),
+    )).id();
+    let mut last: Entity = root;
+    let mut root_is_dad = false;
+    for i in 1..length{
+        let Some(size) = to_add.get(i) else {break;};
+        let size = *size;
+        let e = spawn_blood_particle(commands, layout_handles, asset_server, size);
+        if root_is_dad{
+            commands.entity(last).insert(FollowingBloodParticlePart{max_dist: size * 0.45, tail: Some(e)});
+        } else {
+            root_is_dad = true;
+            commands.entity(last).insert(FollowingBloodParticle{follow, tail: Some(e)});
+        }
+        last = e;
+        if i == length - 1 {
+            commands.entity(last).insert(FollowingBloodParticlePart{max_dist: size * 0.45, tail: None});
+        }
+    }
+}
+
+
+
+pub fn update_blood_particles(
+    transforms: Query<&Transform, (Without<FollowingBloodParticle>, Without<FollowingBloodParticlePart>)>,
+    mut particle_heads: Query<(&FollowingBloodParticle, &mut Transform), Without<FollowingBloodParticlePart>>,
+    mut particle_tails: Query<(&FollowingBloodParticlePart, &mut Transform), Without<FollowingBloodParticle>>,
+    time: Res<Time<Virtual>>,
+){
+    let dt = time.delta_seconds();
+    for (head, mut current_pos) in particle_heads.iter_mut(){
+        let Ok(target_pos) = transforms.get(head.follow) else {continue};
+        let last_pos= current_pos.translation.xy().exp_decay(target_pos.translation.xy(), 10., dt).extend(10.);
+        current_pos.translation = last_pos;
+        let Some(tail) = head.tail else {continue;};
+
+        fn rec_update(tail: Entity, mut last_pos: Vec2, particle_tails: &mut Query<'_, '_, (&FollowingBloodParticlePart, &mut Transform), Without<FollowingBloodParticle>>){
+            let Ok((p, mut transform)) = particle_tails.get_mut(tail) else {return;};
+            let d = (last_pos.xy() - transform.translation.xy()).length_squared();
+            if d > p.max_dist * p.max_dist {
+                transform.translation = (last_pos + ((transform.translation.xy() - last_pos.xy()).normalize_or_zero() * p.max_dist)).extend(10.);
+            }
+            last_pos = transform.translation.truncate();
+            let Some(tail) = p.tail else {return;};
+            rec_update(tail, last_pos, particle_tails);
+        }
+
+        rec_update(tail, last_pos.truncate(), &mut particle_tails);
+    }
+}

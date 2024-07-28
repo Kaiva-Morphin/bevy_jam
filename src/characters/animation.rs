@@ -43,7 +43,7 @@ impl Default for AnimationController{
 
 
 
-pub fn spawn_player_animation_bundle(commands: &mut Commands, asset_server: Res<AssetServer>, layout_handles: &mut ResMut<TextureAtlasLayoutHandles>) -> Entity{
+pub fn spawn_player_animation_bundle(commands: &mut Commands, asset_server: &Res<AssetServer>, layout_handles: &mut ResMut<TextureAtlasLayoutHandles>) -> Entity{
     commands.spawn((
         AnimationController{
             ..default()
@@ -55,7 +55,7 @@ pub fn spawn_player_animation_bundle(commands: &mut Commands, asset_server: Res<
             commands.spawn((
                 Name::new("Body"),
                 SpriteBundle{
-                    texture: asset_server.load("src/player/vampire.png"),
+                    texture: asset_server.load("player/vampire.png"),
                     ..default()
                 },
                 TextureAtlas{
@@ -74,6 +74,18 @@ pub fn spawn_player_animation_bundle(commands: &mut Commands, asset_server: Res<
                     ..default()
                 },
             )).insert(Transform::from_translation(vec3(0., -8., SHADOW_Z)));
+            commands.spawn((
+                Name::new("Umbrella"),
+                PartType::Umbrella,
+                SpriteBundle{
+                    texture: asset_server.load("player/umbrella.png"),
+                    ..default()
+                },
+                TextureAtlas{
+                    layout: layout_handles.add_or_load(&asset_server, "Umbrella", TextureAtlasLayout::from_grid(uvec2(19, 13), 2, 3, Some(uvec2(1, 1)), None)),
+                    index: 0
+                },
+            )).insert(Transform::from_translation(vec3(0., 3., ITEM_Z)));
     }).id()
 }
 
@@ -135,6 +147,7 @@ pub enum PartType{
     Item{ variant: usize, variants: usize },
     Outfit{variant: usize, variants: usize},
     Arms,
+    Umbrella,
     Hair{variant: usize, variants: usize}
 }
 
@@ -147,6 +160,7 @@ impl PartType {
                 PartType::Body { variant: _, variants: _ } => BODY_Z,
                 PartType::Eyes { variant: _, variants: _ } => EYES_Z,
                 PartType::Item { variant: _, variants: _ } => ITEM_Z,
+                PartType::Umbrella => ITEM_Z,
                 PartType::Outfit { variant: _, variants: _ } => OUTFIT_Z,
                 PartType::Arms => ARMS_Z,
                 PartType::Hair { variant: _, variants: _ } => HAIR_Z,
@@ -640,6 +654,19 @@ pub(super) fn update_sprites(
                 match sprite_type {
                     PartType::Body{variant: _, variants: _} => {
                         atlas.index = c.get_idx();
+                        sprite.flip_x = mirrored;
+                    },
+                    PartType::Umbrella => {
+                        atlas.index = c.get_dir_custom_offset(2);
+                        transform.translation = sprite_type.default_offset() + offset + match c.direction {
+                            0 => {vec3(3.5, 4.5, 0.)}
+                            1 => {vec3(1.5, 3.5, 0.)}
+                            2 => {vec3(-0.5, 4.5, 0.)}
+                            _ => {vec3(-1.5, 3.5, 0.)}
+                        };
+                        
+                        *visibility = c.get_item_visibility();
+                        //transform.translation = sprite_type.default_offset() + offset + c.get_item_offset();
                         sprite.flip_x = mirrored;
                     },
                     PartType::Eyes{variant, variants} => {

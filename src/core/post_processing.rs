@@ -292,8 +292,8 @@ pub struct PostProcessUniform {
     translation: Vec2,
     target_height: f32,
     target_width: f32,
-    height: f32,
-    width: f32,
+    pub height: f32,
+    pub width: f32,
 
     pub daytime: f32,
     

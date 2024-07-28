@@ -16,6 +16,12 @@ impl ExpDecay<Vec3> for Vec3 {
     }
 }
 
+impl ExpDecay<Vec2> for Vec2 {
+    fn exp_decay(&self, b: Vec2, decay: f32, dt: f32) -> Vec2 {
+        b + (*self - b) * (-decay*dt).exp()
+    }
+}
+
 #[derive(Resource, Default)]
 pub struct TextureAtlasLayoutHandles{
     handles: HashMap<String, Handle<TextureAtlasLayout>>

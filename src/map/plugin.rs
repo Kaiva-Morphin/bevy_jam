@@ -6,7 +6,7 @@ use bevy_rapier2d::prelude::{KinematicCharacterController, Velocity};
 
 use crate::player::components::Player;
 
-use super::tilemap::{self, TileObsticle, TransformToGrid};
+use super::tilemap::{self, setup_camera_bounds, TileObsticle, TransformToGrid};
 
 pub struct TileMapPlugin;
 
@@ -25,7 +25,7 @@ impl Plugin for TileMapPlugin {
         });
         app.add_systems(PreStartup, tilemap::pre_setup);
         app.add_systems(Update, tilemap::watcher);
-        app.add_systems(Update, (tilemap::spawn_tile_collision, update_unit_grid, tilemap::spawn_tile_tree, tilemap::update_animated_trees));
+        app.add_systems(Update, (tilemap::spawn_tile_collision, setup_camera_bounds, update_unit_grid, tilemap::spawn_tile_tree, tilemap::update_animated_trees));
         app.add_systems(PreUpdate, trespassable_spawn_listener);
         app.add_systems(PreUpdate, sizif);
         app.register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner");

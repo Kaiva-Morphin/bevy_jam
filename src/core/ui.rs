@@ -161,8 +161,9 @@ fn update(
     time: Res<Time<Virtual>>,
     player_stats: Query<&Player>
 ){
-    let stats = player_stats.single();
-    blood_e.single_mut().index = ((1. - stats.hp as f32 / stats.max_hp as f32) * 20.).round() as usize % 20;
+    if let Ok(stats) = player_stats.get_single(){
+        blood_e.single_mut().index = ((1. - stats.hp as f32 / stats.max_hp as f32) * 20.).round() as usize % 20;
+    }
     let (mut atlas, mut image) = daynight_e.single_mut();
     let t = (get_local_time_f(time.elapsed_seconds()) + 0.75) % 1.;
     let d = (t * (29. * 2. - 2.)).ceil() as usize;

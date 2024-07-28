@@ -3,20 +3,32 @@ pub mod player;
 pub mod npc;
 pub mod map;
 pub mod systems;
-pub mod characters;
 pub mod stuff;
+pub mod characters;
+pub mod sounds;
 
+
+use crate::player::components::Player;
+use core::{camera::plugin::EnhancedCameraPlugin, functions::TextureAtlasLayoutHandles};
 use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
 use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
-use core::despawn_lifetime::DespawnTimer;
-use core::functions::TextureAtlasLayoutHandles;
-use crate::characters::animation::CivilianAnims;
-use bevy::math::{vec2, vec3};
+use std::time::Duration;
+
+use bevy::math::vec3;
 use bevy::prelude::*;
+use bevy_kira_audio::prelude::*;
+use characters::plugin::CharacterAnimationPlugin;
+use map::plugin::TileMapPlugin;
+use npc::NPCPlugin;
+use player::PlayerPlugin;
+use sounds::AudioPlugin;
+use stuff::{simple_anim_update, spawn_follow_blood_particle, update_blood_particles};
+use systems::*;
+use core::despawn_lifetime::DespawnTimer;
+use crate::characters::animation::CivilianAnims;
 
 use bevy_easings::{Ease, EaseFunction, EasingType};
 use characters::animation::{spawn_civilian_animation_bundle, spawn_player_animation_bundle, AnimationController};
-use characters::plugin::CharacterAnimationPlugin;
 use rand::Rng;
 use stuff::*;
 use systems::GameState;
@@ -46,7 +58,7 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut layout_handles: ResMut<TextureAtlasLayoutHandles>
 ){
-    let entity = spawn_civilian_animation_bundle(&mut commands, &asset_server, &mut layout_handles);
+    let entity = spawn_player_animation_bundle(&mut commands, &asset_server, &mut layout_handles);
     commands.entity(entity).insert(PreviewCharacter);
 }
 
