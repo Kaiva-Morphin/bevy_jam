@@ -29,8 +29,8 @@ impl Plugin for TileMapPlugin {
         app.add_systems(Update, tilemap::watcher);
         app.add_systems(Update, (tilemap::spawn_tile_collision, update_emitter_tiles, setup_camera_bounds, update_unit_grid, tilemap::spawn_tile_tree, tilemap::spawn_raycastable_tile_collision, tilemap::update_animated_trees));
         app.add_systems(PreUpdate, trespassable_spawn_listener);
-        app.add_systems(PreUpdate, sizif);
-        app.register_ldtk_entity::<EntitySpawnerBundle>("EnemySpawner");
+        app.register_ldtk_entity::<HunterSpawnerBundle>("HunterSpawner");
+        app.register_ldtk_entity::<CivilianSpawnerBundle>("CivilianSpawner");
         app.register_ldtk_int_cell_for_layer::<tilemap::RaycastableTileObsticleBundle>("Ground", 1);
         app.register_ldtk_int_cell_for_layer::<tilemap::TiledTreeBundle>("Ground", 3);
         app.register_ldtk_int_cell_for_layer::<tilemap::TileObsticleBundle>("Ground", 4);
@@ -67,13 +67,39 @@ pub struct TrespassableCellBundle{
 
 
 #[derive(Clone, Eq, PartialEq, Debug, Default, Component)]
-pub struct EntitySpawner {
+pub struct HunterSpawner {
     pub timer: Timer,
 }
 
-#[derive(Clone, Debug, Default, Bundle, LdtkEntity)]
-pub struct EntitySpawnerBundle {
-    spanwer: EntitySpawner,
+#[derive(Clone, Debug, Bundle, LdtkEntity)]
+pub struct HunterSpawnerBundle {
+    spanwer: HunterSpawner,
+}
+
+impl Default for HunterSpawnerBundle {
+    fn default() -> Self {
+        Self {
+            spanwer: HunterSpawner { timer: Timer::new(Duration::from_secs_f32(0.5), TimerMode::Repeating) }
+        }
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Default, Component)]
+pub struct CivilianSpawner {
+    pub timer: Timer,
+}
+
+#[derive(Clone, Debug, Bundle, LdtkEntity)]
+pub struct CivilianSpawnerBundle {
+    spanwer: CivilianSpawner,
+}
+
+impl Default for CivilianSpawnerBundle {
+    fn default() -> Self {
+        Self {
+            spanwer: CivilianSpawner { timer: Timer::new(Duration::from_secs_f32(0.5), TimerMode::Repeating) }
+        }
+    }
 }
 
 #[derive(Resource, Default)]
@@ -131,14 +157,5 @@ fn trespassable_spawn_listener(
         trespassable_cells.cells = cells_grid;
         info!("Trespassable cells inited!");
         trespassable_cells.ready = true;
-    }
-}
-
-fn sizif(
-    mut commands: Commands,
-    q: Query<Entity, Added<EntitySpawner>>,
-    ){
-    for e in q.iter(){
-    commands.entity(e).insert(EntitySpawner{ timer: Timer::new(Duration::from_secs_f32(1.), TimerMode::Repeating)});
     }
 }
