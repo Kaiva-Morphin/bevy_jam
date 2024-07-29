@@ -221,7 +221,7 @@ pub fn spawn_cililian_body(
         VisibilityBundle::default(),
         DespawnTimer::seconds(5.),
     ))
-    .insert(Transform::from_translation(vec3(0., -1., -5.) + start).with_scale(vec3(if flipped{-1.} else {1.}, 1., 0.)))
+    .insert(Transform::from_translation(vec3(0., -1., -2.) + start).with_scale(vec3(if flipped{-1.} else {1.}, 1., 0.)))
     .with_children(|commands| {
         commands.spawn((
             Name::new("Particle"),
@@ -269,7 +269,7 @@ pub fn spawn_hunter_body(
         VisibilityBundle::default(),
         DespawnTimer::seconds(5.),
     ))
-    .insert(Transform::from_translation(vec3(0., -3., -5.) + start).with_scale(vec3(if flipped{-1.} else {1.}, 1., 1.)))
+    .insert(Transform::from_translation(vec3(0., -3., -2.) + start).with_scale(vec3(if flipped{-1.} else {1.}, 1., 1.)))
     .with_children(|commands| {
         commands.spawn((
             Name::new("Particle"),

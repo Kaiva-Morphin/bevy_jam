@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bevy::{math::ivec2, prelude::*, utils::HashSet};
+use bevy::{math::ivec2, prelude::*, transform::commands, utils::HashSet};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_rapier2d::prelude::{ActiveEvents, Collider, RigidBody, Sensor, Velocity};
@@ -48,9 +48,8 @@ impl Plugin for TileMapPlugin {
         app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterNYBundle>("Emitters", 9);
         app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterNYBundle>("Emitters", 10);
         app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterNYBundle>("Emitters", 11 );
-        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterAlwaysBundle>("Emitters", 12);
-        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterAlwaysBundle>("Emitters", 13);
-        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterAlwaysBundle>("Emitters", 15);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterAlwaysTorchBundle>("Emitters", 12);
+        app.register_ldtk_int_cell_for_layer::<tilemap::LightEmitterAlwaysCampfireBundle>("Emitters", 13);
 
         app.insert_resource(TrespassableCells::default());
     }
@@ -71,25 +70,12 @@ pub struct CollectableRoseBundle{
 pub fn respawn_collectables(
     asset_server: Res<AssetServer>,
     mut commands: Commands,
-    spawners: Query<Entity, Added<CollectableRoseSpawner>>,
+    spawners: Query<Entity, With<CollectableRoseSpawner>>,
     roses: Query<Entity, With<CollectableRose>>
 ){
-    for rose in roses.iter(){commands.entity(rose).despawn()}
-}
-
-pub fn handle_collectables(
-    //EventHandler::handle_collision_eventx
-){
-
-}
-
-pub fn spawn_collectables(
-    to_spawn: Query<Entity, Added<CollectableRoseSpawner>>,
-    asset_server: Res<AssetServer>,
-    mut commands: Commands,
-){
-    for e in to_spawn.iter(){
-        commands.entity(e).insert((
+    for rose in roses.iter(){commands.entity(rose).despawn()};
+    for e in spawners.iter(){
+        commands.entity(e).with_children(|commands|{commands.spawn((
             SpriteBundle{
                 texture: asset_server.load("map/rose.png"),
                 ..default()
@@ -98,9 +84,29 @@ pub fn spawn_collectables(
             Collider::ball(1.),
             ActiveEvents::COLLISION_EVENTS,
             Sensor,
-        ));
+        ));});
     }
 }
+
+pub fn spawn_collectables(
+    to_spawn: Query<Entity, Added<CollectableRoseSpawner>>,
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
+){
+    for e in to_spawn.iter(){
+        commands.entity(e).with_children(|commands|{commands.spawn((
+            SpriteBundle{
+                texture: asset_server.load("map/rose.png"),
+                ..default()
+            },
+            RigidBody::Fixed,
+            Collider::ball(1.),
+            ActiveEvents::COLLISION_EVENTS,
+            Sensor,
+        ));});
+    }
+}
+
 
 
 

@@ -160,7 +160,7 @@ impl PartType {
                 PartType::Body { variant: _, variants: _ } => BODY_Z,
                 PartType::Eyes { variant: _, variants: _ } => EYES_Z,
                 PartType::Item { variant: _, variants: _ } => ITEM_Z,
-                PartType::Umbrella => 0.1,
+                PartType::Umbrella => 0.02,
                 PartType::Outfit { variant: _, variants: _ } => OUTFIT_Z,
                 PartType::Arms => ARMS_Z,
                 PartType::Hair { variant: _, variants: _ } => HAIR_Z,

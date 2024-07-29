@@ -6,7 +6,7 @@ use noise::{core::perlin, NoiseFn, Perlin};
 use rand::Rng;
 use bevy_easings::*;
 
-use crate::{core::{camera::plugin::{CameraController, MainCamera}, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, player::systems::{RAYCASTABLE_STRUCT_CG, STRUCTURES_CG}, stuff::fire_bundle, DayCycle};
+use crate::{core::{camera::plugin::{CameraController, MainCamera}, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, player::{components::Player, systems::{RAYCASTABLE_STRUCT_CG, STRUCTURES_CG}}, stuff::fire_bundle, DayCycle};
 
 #[derive(Component)]
 pub struct Structure;
@@ -15,7 +15,7 @@ pub fn pre_setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ){
-    let ldtk_handle = asset_server.load("map/map.ldtk");
+    let ldtk_handle = asset_server.load("map/release_map.ldtk");
     commands.spawn(LdtkWorldBundle {
         ldtk_handle,
         transform: Transform::from_translation(Vec3::Z * -11.),
@@ -131,11 +131,17 @@ pub struct LightEmitterNYBundle{b: LightEmitterNY}
 pub struct LightEmitter;
 
 #[derive(Component, Default)]
-pub struct LightEmitterAlways;
+pub struct LightEmitterAlwaysCampfire;
 
 #[derive(Bundle, Default, LdtkIntCell)]
-pub struct LightEmitterAlwaysBundle{b: LightEmitterAlways}
+pub struct LightEmitterAlwaysCampfireBundle{b: LightEmitterAlwaysCampfire}
 
+
+#[derive(Component, Default)]
+pub struct LightEmitterAlwaysTorch;
+
+#[derive(Bundle, Default, LdtkIntCell)]
+pub struct LightEmitterAlwaysTorchBundle{b: LightEmitterAlwaysTorch}
 
 #[derive(Component)]
 pub struct LightEmitterCyclic;
@@ -152,7 +158,8 @@ pub fn update_emitter_tiles(
 
     mut overlay: Query<&mut Visibility, With<NightWindow>>,
 
-    new_always: Query<Entity, Added<LightEmitterAlways>>,
+    mut new_torch: Query<Entity, Added<LightEmitterAlwaysTorch>>,
+    mut new_camp: Query<Entity, Added<LightEmitterAlwaysCampfire>>,
     
     mut handles: ResMut<TextureAtlasLayoutHandles>,
 
@@ -163,7 +170,7 @@ pub fn update_emitter_tiles(
     asset_server: Res<AssetServer>,
     time: Res<Time<Virtual>>
 ){
-    let max_intensity = 1.;
+    let max_intensity = 0.8;
     let default_radius = 150.;
     let default_falloff = 0.;
     let color = Color::srgb(0.9, 0.791, 0.396);
@@ -177,7 +184,7 @@ pub fn update_emitter_tiles(
                     radius: default_radius,
                     falloff: default_falloff,
                 },
-                transform: Transform::from_translation(offset+ vec3(0., 0., 1.)),
+                transform: Transform::from_translation(offset + vec3(0., 0., 1.)),
                 ..Default::default()
             },
             LightEmitter
@@ -200,27 +207,83 @@ pub fn update_emitter_tiles(
     for b in new_pypx.iter() {commands.entity(b.0).with_children(|c|{spawn_light_bundle(c, vec3(4., 4., 0.), b.1.data.clone())});}
     for b in new_ny.iter() {commands.entity(b.0).with_children(|c|{spawn_light_bundle(c, vec3(0., 0., 0.), b.1.data.clone())});}
 
-
-    for b in new_always.iter() {commands.entity(b).with_children(|c|{
-        c.spawn((
-            bevy_light_2d::light::PointLight2dBundle{
-                transform: Transform::from_translation(vec3(0., 10., -6.)),
-                point_light: PointLight2d{
-                    color: Color::srgb(0.8, 0.3, 0.),
-                    intensity: max_intensity,
-                    radius: default_radius,
-                    falloff: default_falloff,
+    for e in new_camp.iter_mut() {
+        commands.entity(e).with_children(|c|{
+            c.spawn((
+                bevy_light_2d::light::PointLight2dBundle{
+                    point_light: PointLight2d{
+                        color: Color::srgb(0.8, 0.3, 0.),
+                        intensity: max_intensity,
+                        radius: default_radius,
+                        falloff: default_falloff,
+                    },
+                    ..Default::default()
                 },
-                ..Default::default()
-            },
-            LightEmitter,
-        )).insert(
-            fire_bundle(&asset_server, &mut handles, rand::thread_rng().gen_range(0..19))
-        ).insert(Transform::from_translation(vec3(0., 10., -5.)));
-    });}
+                LightEmitter,
+            )).insert(
+                fire_bundle(&asset_server, &mut handles, rand::thread_rng().gen_range(0..19))
+            ).insert(Transform::from_translation(vec3(0., 10., 1.)));
+        });
+        commands.entity(e).insert(Transform::from_xyz(0., 0., 0.));
+    }
+
+    for e in new_camp.iter_mut() {
+        commands.entity(e).with_children(|c|{
+            c.spawn(
+                SpriteBundle{
+                    transform: Transform::from_xyz(0., 0., -10.),
+                    texture: asset_server.load("map/campfire.png"),
+                    ..default()
+                }
+            );
+            c.spawn((
+                bevy_light_2d::light::PointLight2dBundle{
+                    point_light: PointLight2d{
+                        color: Color::srgb(0.8, 0.3, 0.),
+                        intensity: max_intensity,
+                        radius: default_radius,
+                        falloff: default_falloff,
+                    },
+                    ..Default::default()
+                },
+                LightEmitter,
+            )).insert(
+                fire_bundle(&asset_server, &mut handles, rand::thread_rng().gen_range(0..19))
+            ).insert(Transform::from_translation(vec3(0., 10., 1.)));
+        });
+        commands.entity(e).insert(Transform::from_xyz(0., 0., 0.));
+    }
+    for e in new_torch.iter_mut() {
+        commands.entity(e).with_children(|c|{
+            c.spawn(
+                SpriteBundle{
+                    transform: Transform::from_xyz(0., 0., -10.),
+                    texture: asset_server.load("map/torch.png"),
+                    ..default()
+                }
+            );
+            c.spawn((
+                bevy_light_2d::light::PointLight2dBundle{
+                    point_light: PointLight2d{
+                        color: Color::srgb(0.8, 0.3, 0.),
+                        intensity: max_intensity,
+                        radius: default_radius,
+                        falloff: default_falloff,
+                    },
+                    ..Default::default()
+                },
+                LightEmitter,
+            )).insert(
+                fire_bundle(&asset_server, &mut handles, rand::thread_rng().gen_range(0..19))
+            ).insert(Transform::from_translation(vec3(0., 12., -9.)));
+        });
+    }
+
     let p = post_process.single();
     for mut l in emitters.iter_mut(){
+
         l.intensity = p.daytime.powi(2) * max_intensity;
+        
         if (time.elapsed_seconds() * 16.).round() as usize % 2 == 0 {
             l.radius = default_radius + rand::thread_rng().gen_range(0..100) as f32 * 0.01 * 0.4 * default_radius;
         }
@@ -234,13 +297,33 @@ pub fn update_emitter_tiles(
 
 
 pub fn update_animated_trees(
-    mut tree_q: Query<(&GlobalTransform, &mut Transform, &AnimatedTreePart, &mut Sprite), Without<MainCamera>>,
+    mut tree_q: Query<(&GlobalTransform, &mut Transform, &AnimatedTreePart, &mut Sprite), Without<Player>>,
     time: Res<Time<Virtual>>,
     mut perlin: Local<Option<Perlin>>,
+    mut is_static: Local<bool>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    player: Query<&Transform, (With<Player>, Without<AnimatedTree>)>
 ){
+    if keyboard.just_pressed(KeyCode::F4){
+        *is_static = !*is_static;
+        if *is_static {
+            tree_q.par_iter_mut().for_each(|(_, mut transform, tree, _)|{
+                if tree.0 == 0 {return;}
+                transform.rotation = Quat::from_rotation_z(0.);
+            });
+        }
+    }
+    if *is_static {return;}
+
     if perlin.is_none(){*perlin = Some(Perlin::new(rand::thread_rng().gen::<u32>()))}
+    
+    let pos = player.get_single();
+    let pos = if let Ok(pos) = pos {pos.translation.xy()} else {Vec2::ZERO};
+    
     tree_q.par_iter_mut().for_each(|(glob, mut transform, tree,  mut s)|{
         if tree.0 == 0 {return;}
+        if pos.distance_squared(glob.translation().xy()) > (400.0f32).powi(2) {return;}
+
         let offset = vec3(0., -match tree.0 {
             1 => 6.,
             2 => 16.,
@@ -278,7 +361,7 @@ pub fn spawn_tile_tree(
                         index: r.gen_range(1..3) + 9
                     },
                     AnimatedTreePart(0)
-                )).insert(Transform::from_xyz(0., -3., 10.).with_rotation(Quat::from_rotation_x(0.2))).with_children(|cmd|{
+                )).insert(Transform::from_xyz(0., -3., 6.).with_rotation(Quat::from_rotation_x(0.3))).with_children(|cmd|{
                     cmd.spawn((
                         AnimatedTreePart(1),
                         SpriteBundle{
@@ -289,7 +372,7 @@ pub fn spawn_tile_tree(
                             layout: layout_handles.add_or_load(&asset_server, "Tree", TextureAtlasLayout::from_grid(uvec2(28, 17), 3, 4, Some(uvec2(1, 1)), None)),
                             index: r.gen_range(1..3) + 6
                         },
-                    )).insert(Transform::from_xyz(0., 6., 0.).with_rotation(Quat::from_rotation_y(0.2))).with_children(|cmd|{
+                    )).insert(Transform::from_xyz(0., 6., 0.).with_rotation(Quat::from_rotation_y(0.))).with_children(|cmd|{
                         cmd.spawn((
                             AnimatedTreePart(2),
                             SpriteBundle{
@@ -300,7 +383,7 @@ pub fn spawn_tile_tree(
                                 layout: layout_handles.add_or_load(&asset_server, "Tree", TextureAtlasLayout::from_grid(uvec2(28, 17), 3, 4, Some(uvec2(1, 1)), None)),
                                 index: r.gen_range(1..3) + 3
                             },
-                        )).insert(Transform::from_xyz(0., 10., 0.).with_rotation(Quat::from_rotation_y(0.2))).with_children(|cmd|{
+                        )).insert(Transform::from_xyz(0., 10., 0.).with_rotation(Quat::from_rotation_y(0.))).with_children(|cmd|{
                             cmd.spawn((
                                 AnimatedTreePart(3),
                                 SpriteBundle{
@@ -311,7 +394,7 @@ pub fn spawn_tile_tree(
                                     layout: layout_handles.add_or_load(&asset_server, "Tree", TextureAtlasLayout::from_grid(uvec2(28, 17), 3, 4, Some(uvec2(1, 1)), None)),
                                     index: r.gen_range(1..3)
                                 },
-                            )).insert(Transform::from_xyz(0., 10., 0.).with_rotation(Quat::from_rotation_y(0.05)));
+                            )).insert(Transform::from_xyz(0., 10., 0.1).with_rotation(Quat::from_rotation_y(0.05)));
                         });
                     });
                 });

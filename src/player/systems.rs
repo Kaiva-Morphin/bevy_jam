@@ -64,7 +64,7 @@ pub fn spawn_player(
     let entity = spawn_player_animation_bundle(commands, asset_server, layout_handles);
     commands.entity(entity).insert((
         VisibilityBundle::default(),
-        TransformBundle::from_transform(Transform::from_xyz(16., 16., 0.)),
+        TransformBundle::from_transform(Transform::from_xyz(16., 16., -1.)),
         Name::new("Player"),
         CameraFollow{order: 0, speed: 10.},
         Player {hp: 100., xp: 0., score: 0., max_speed: 80., accumulation_gain: 600., 
@@ -92,22 +92,20 @@ pub fn player_controller(
     keyboard: Res<ButtonInput<KeyCode>>,
     day_cycle: Res<DayCycle>,
     time: Res<Time>,
-    mut play_sound: EventWriter<PlaySoundEvent>,
-    mut dash_dir: Local<Option<Vec2>>,
-    mut accum: Local<f32>,
+    mut dash_dir: Local<Vec2>,
     mut dash_cd: Local<Timer>,
+    mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
     if let Ok((mut character_controller, mut controller,
         mut animation_controller, mut dash_timer,
         mut player, player_entity)) = player_q.get_single_mut() {
     character_controller.linvel = Vec2::ZERO;
-    if player.is_dead {return}
     let dt = time.delta_seconds();
     if dash_timer.timer.elapsed_secs() == 0. {
         let input_dir = vec2(
             keyboard.pressed(KeyCode::KeyD) as i32 as f32 - keyboard.pressed(KeyCode::KeyA) as i32 as f32,
             keyboard.pressed(KeyCode::KeyW) as i32 as f32 - keyboard.pressed(KeyCode::KeyS) as i32 as f32
-        ).normalize();
+        );
         
         controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * player.max_speed, dt * player.accumulation_gain);
         if controller.accumulated_velocity.length() > player.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * player.max_speed}
@@ -131,29 +129,46 @@ pub fn player_controller(
         if keyboard.just_pressed(KeyCode::ShiftLeft) {
             play_sound.send(PlaySoundEvent::Dash);
             dash_timer.timer.tick(Duration::from_secs_f32(dt));
-            *dash_dir = Some(input_dir);
-            *accum = 10.;
+            *dash_dir = input_dir;
             if day_cycle.is_night {
                 commands.entity(player_entity).insert(
                     (CollisionGroups::new(
                         Group::from_bits(PLAYER_CG).unwrap(),
                         Group::from_bits(STRUCTURES_CG | NPC_CG | RAYCASTABLE_STRUCT_CG).unwrap()
                     ),
-                    Sensor)
+                    Sensor,)
                 );
             } else {
                 commands.entity(player_entity).insert(
                     CollisionGroups::new(
                         Group::from_bits(PLAYER_CG).unwrap(),
-                        Group::from_bits(STRUCTURES_CG | NPC_CG | RAYCASTABLE_STRUCT_CG).unwrap()
+                        Group::from_bits(STRUCTURES_CG | RAYCASTABLE_STRUCT_CG).unwrap()
                     ),
                 );
             }
         }
-    } 
+    } else {
+        dash_timer.timer.tick(Duration::from_secs_f32(dt));
+        let t = dash_timer.timer.elapsed_secs();
+
+        let new_max = player.max_speed * g(t);
+        let new_gain = player.accumulation_gain * g(t);
+
+        controller.accumulated_velocity = controller.accumulated_velocity.move_towards(dash_dir.normalize_or_zero() * new_max, dt * new_gain);
+        if controller.accumulated_velocity.length() > new_max {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * new_max}
+        character_controller.linvel = controller.accumulated_velocity;
+        
+        if dash_timer.timer.finished() {
+            dash_timer.timer.set_elapsed(Duration::from_secs_f32(0.));
+            commands.entity(player_entity).insert(
+            CollisionGroups::new(
+                Group::from_bits(PLAYER_CG).unwrap(),
+                Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG | RAYCASTABLE_STRUCT_CG).unwrap()
+            )).remove::<Sensor>();
+        }
+    }
     }
 }
-
 fn g(x: f32) -> f32 {
     let x = 3. - 5. * x;
     5. * std::f32::consts::E.powf(-(x - 1.639964).powf(2.)/(2.*0.800886f32.powf(2.)))

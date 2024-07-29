@@ -6,7 +6,7 @@ use rand::{thread_rng, Rng};
 
 use crate::{
     characters::animation::*, core::functions::TextureAtlasLayoutHandles, map::{plugin::{CivilianSpawner, HunterSpawner, TrespassableCells}, 
-    tilemap::{Structure, TransformToGrid}}, player::{components::{HitPlayer, KillNpc, Player}, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, sounds::components::PlaySoundEvent, stuff::{spawn_angry_particle, spawn_cililian_body, spawn_hunter_body, spawn_question_particle, spawn_warn_particle}, systems::DayCycle
+    tilemap::{Structure, TransformToGrid}}, player::{components::{HitPlayer, KillNpc, Player}, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, RAYCASTABLE_STRUCT_CG, STRUCTURES_CG}}, sounds::components::PlaySoundEvent, stuff::{spawn_angry_particle, spawn_cililian_body, spawn_hunter_body, spawn_question_particle, spawn_warn_particle}, systems::DayCycle
 };
 
 use super::{components::*, pathfinder};
@@ -39,7 +39,7 @@ pub fn spawn_civilian(
         Collider::ball(4.5),
         CollisionGroups::new(
             Group::from_bits(NPC_CG).unwrap(),
-            Group::from_bits(PLAYER_CG).unwrap()
+            Group::from_bits(PLAYER_CG | RAYCASTABLE_STRUCT_CG  | STRUCTURES_CG).unwrap()
         ),
         NpcVelAccum {v: Vec2::ZERO},
         NpcPath {path: None},
@@ -261,7 +261,7 @@ pub fn spawn_hunter(
         Velocity::zero(),
         CollisionGroups::new(
             Group::from_bits(NPC_CG).unwrap(),
-            Group::from_bits(PLAYER_CG).unwrap(),
+            Group::from_bits(PLAYER_CG | RAYCASTABLE_STRUCT_CG  | STRUCTURES_CG).unwrap(),
         ),
         HunterTimer { timer: Timer::new(Duration::from_secs_f32(HUNTER_TIMER), TimerMode::Repeating) },
         NpcState::Chill,
