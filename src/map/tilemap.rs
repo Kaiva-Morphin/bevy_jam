@@ -655,6 +655,8 @@ pub fn spawn_tile_collision(
     }
 }
 
+#[derive(Component)]
+pub struct RaycastableHelp;
 
 pub fn spawn_raycastable_tile_collision(
     mut commands: Commands,
@@ -793,6 +795,7 @@ pub fn spawn_raycastable_tile_collision(
                             ))
                             .insert((
                                 RigidBody::Fixed,
+                                RaycastableHelp,
                                 CollisionGroups::new(
                                     Group::from_bits(RAYCASTABLE_STRUCT_CG).unwrap(),
                                     Group::ALL,

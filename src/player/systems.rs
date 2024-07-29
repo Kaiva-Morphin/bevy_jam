@@ -7,6 +7,7 @@ use crate::characters::animation::{spawn_player_animation_bundle, AnimationContr
 use crate::core::camera::plugin::CameraFollow;
 use crate::core::functions::{ExpDecay, TextureAtlasLayoutHandles};
 use crate::core::ui::PlayerUINode;
+use crate::npc::systems::RosesCollected;
 use crate::sounds::components::PlaySoundEvent;
 use crate::systems::DayCycle;
 use crate::PauseEvent;
@@ -84,7 +85,7 @@ pub fn spawn_player(
         ),
     ));
 }
-use crate::characters::animation::HunterAnims;
+
 pub fn player_controller(
     mut commands: Commands,
     mut player_q: Query<(&mut Velocity, &mut PlayerController,
@@ -126,7 +127,7 @@ pub fn player_controller(
             animation_controller.play_idle_priority(1);
         }
     
-        if keyboard.just_pressed(KeyCode::ShiftLeft) {
+        if keyboard.just_released(KeyCode::ShiftLeft) {
             play_sound.send(PlaySoundEvent::Dash);
             dash_timer.timer.tick(Duration::from_secs_f32(dt));
             *dash_dir = input_dir;
@@ -169,6 +170,7 @@ pub fn player_controller(
     }
     }
 }
+
 fn g(x: f32) -> f32 {
     let x = 3. - 5. * x;
     5. * std::f32::consts::E.powf(-(x - 1.639964).powf(2.)/(2.*0.800886f32.powf(2.)))
@@ -191,7 +193,7 @@ pub fn hit_player(
             }
         }
         if player.hp < 0. && !player.is_dead {
-            kill_player.send(KillPlayer);
+            kill_player.send(KillPlayer {won: false});
         }
     }
 }
@@ -202,21 +204,23 @@ pub fn kill_player(
     mut play_sound: EventWriter<PlaySoundEvent>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
     mut death_timer: ResMut<DeathTimer>,
     time: Res<Time>,
     mut death_time: Query<&mut Text, With<DeathTime>>,
     death_text: Query<Entity, With<DeathText>>,
+    roses: Res<RosesCollected>,
 ) {
     let dt = time.delta_seconds();
     let t = death_timer.timer.duration().as_secs_f32() - death_timer.timer.elapsed_secs();
     let (entity, mut player) = player_entity.single_mut();
-    for _ in kill_player.read() {
-        play_sound.send(PlaySoundEvent::Kill);
+    for event in kill_player.read() {
+        if !event.won {
+            play_sound.send(PlaySoundEvent::Kill);
+        }
         commands.entity(entity).insert(Visibility::Hidden);
         player.is_dead = true;
         death_timer.timer.tick(Duration::from_secs_f32(dt));
-        spawn_death_text(&mut commands, &asset_server, t);
+        spawn_death_text(&mut commands, &asset_server, t, &roses, event.won);
     }
     if death_timer.timer.elapsed_secs() != 0. {
         death_timer.timer.tick(Duration::from_secs_f32(dt));

@@ -25,8 +25,9 @@ impl Plugin for TileMapPlugin {
             set_clear_color: SetClearColor::FromLevelBackground,
             ..Default::default()
         });
+        app.add_event::<RespawnRosesEvent>();
         app.add_systems(PreStartup, tilemap::pre_setup);
-        app.add_systems(Update, tilemap::watcher);
+        app.add_systems(Update, (tilemap::watcher, spawn_collectables, respawn_collectables));
         app.add_systems(Update, (tilemap::spawn_tile_collision, update_emitter_tiles, setup_camera_bounds, update_unit_grid, tilemap::spawn_tile_tree, tilemap::spawn_raycastable_tile_collision, tilemap::update_animated_trees));
         app.add_systems(PreUpdate, trespassable_spawn_listener);
         app.register_ldtk_entity::<HunterSpawnerBundle>("HunterSpawner");
@@ -67,24 +68,32 @@ pub struct CollectableRoseBundle{
     rose: CollectableRoseSpawner
 }
 
+#[derive(Event)]
+pub struct RespawnRosesEvent;
+
 pub fn respawn_collectables(
     asset_server: Res<AssetServer>,
     mut commands: Commands,
     spawners: Query<Entity, With<CollectableRoseSpawner>>,
-    roses: Query<Entity, With<CollectableRose>>
+    roses: Query<Entity, With<CollectableRose>>,
+    mut event: EventReader<RespawnRosesEvent>,
 ){
-    for rose in roses.iter(){commands.entity(rose).despawn()};
-    for e in spawners.iter(){
-        commands.entity(e).with_children(|commands|{commands.spawn((
-            SpriteBundle{
-                texture: asset_server.load("map/rose.png"),
-                ..default()
-            },
-            RigidBody::Fixed,
-            Collider::ball(1.),
-            ActiveEvents::COLLISION_EVENTS,
-            Sensor,
-        ));});
+    for _ in event.read() {
+        for rose in roses.iter(){commands.entity(rose).despawn()};
+        for e in spawners.iter(){
+            commands.entity(e).with_children(|commands|{commands.spawn((
+                SpriteBundle{
+                    texture: asset_server.load("map/rose.png"),
+                    ..default()
+                },
+                RigidBody::Fixed,
+                Collider::ball(1.),
+                ActiveEvents::COLLISION_EVENTS,
+                CollectableRose,
+                Sensor,
+                Name::new("Rose"),
+            ));});
+        }
     }
 }
 
@@ -102,7 +111,9 @@ pub fn spawn_collectables(
             RigidBody::Fixed,
             Collider::ball(1.),
             ActiveEvents::COLLISION_EVENTS,
+            CollectableRose,
             Sensor,
+            Name::new("Rose"),
         ));});
     }
 }

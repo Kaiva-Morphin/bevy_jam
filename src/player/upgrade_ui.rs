@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{sounds::components::PlaySoundEvent, PauseEvent};
+use crate::{npc::systems::RosesCollected, sounds::components::PlaySoundEvent, PauseEvent, NUM_ROSES};
 
 use super::components::{DeathText, DeathTime, ParentEntity, Player, UpgradeButton};
 
@@ -130,8 +130,16 @@ pub fn spawn_death_text(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
     time: f32,
+    roses_collected: &Res<RosesCollected>,
+    won: bool,
 ) {
     let font = asset_server.load("fonts/Monocraft.ttf");
+    let text;
+    if won {
+        text = "You Won"
+    } else {
+        text = "You Died"
+    }
     commands.spawn((TextBundle {
         style: Style {
             top: Val::Percent(20.),
@@ -139,7 +147,7 @@ pub fn spawn_death_text(
             ..default()
         },
         text: Text {
-            sections: vec![TextSection::new("You Died", TextStyle { font: font.clone(), font_size: 64., color: Color::WHITE })],
+            sections: vec![TextSection::new(text, TextStyle { font: font.clone(), font_size: 64., color: Color::WHITE })],
             ..default()
         },
         ..default()
@@ -164,6 +172,24 @@ pub fn spawn_death_text(
         },
         text: Text {
             sections: vec![TextSection::new("Till the next cycle", TextStyle { font: font.clone(), font_size: 40., color: Color::WHITE })],
+            ..default()
+        },
+        ..default()
+    }, DeathText));
+    let collected;
+    if won {
+        collected = NUM_ROSES
+    } else {
+        collected = roses_collected.collected;
+    }
+    commands.spawn((TextBundle {
+        style: Style {
+            top: Val::Percent(80.),
+            justify_self: JustifySelf::Center,
+            ..default()
+        },
+        text: Text {
+            sections: vec![TextSection::new(format!("Roses Collected: {} / {}", collected, NUM_ROSES), TextStyle { font: font.clone(), font_size: 40., color: Color::WHITE })],
             ..default()
         },
         ..default()

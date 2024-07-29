@@ -5,8 +5,8 @@ use bevy_rapier2d::prelude::*;
 use rand::{thread_rng, Rng};
 
 use crate::{
-    characters::animation::*, core::functions::TextureAtlasLayoutHandles, map::{plugin::{CivilianSpawner, HunterSpawner, TrespassableCells}, 
-    tilemap::{Structure, TransformToGrid}}, player::{components::{HitPlayer, KillNpc, Player}, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, RAYCASTABLE_STRUCT_CG, STRUCTURES_CG}}, sounds::components::PlaySoundEvent, stuff::{spawn_angry_particle, spawn_cililian_body, spawn_hunter_body, spawn_question_particle, spawn_warn_particle}, systems::DayCycle
+    characters::animation::*, core::functions::TextureAtlasLayoutHandles, map::{plugin::{CivilianSpawner, CollectableRose, CollectableRoseSpawner, HunterSpawner, RespawnRosesEvent, TrespassableCells}, 
+    tilemap::{RaycastableHelp, Structure, TransformToGrid}}, player::{components::{HitPlayer, KillNpc, KillPlayer, Player}, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, sounds::components::PlaySoundEvent, stuff::{spawn_angry_particle, spawn_cililian_body, spawn_hunter_body, spawn_question_particle, spawn_warn_particle}, systems::DayCycle
 };
 
 use super::{components::*, pathfinder};
@@ -512,6 +512,12 @@ pub fn manage_projectiles(
     }
 }
 
+#[derive(Resource)]
+pub struct RosesCollected {
+    pub collected: u32,
+    pub max: u32,
+}
+
 pub fn process_collisions(
     mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
@@ -520,15 +526,18 @@ pub fn process_collisions(
     mut civilians: Query<&mut NpcState, With<Civilian>>,
     projectiles: Query<&Projectile>,
     structures: Query<&Structure>,
+    help: Query<&RaycastableHelp>,
+    roses: Query<Entity, With<CollectableRose>>,
+    mut roses_collected: ResMut<RosesCollected>,
     day_cycle: Res<DayCycle>,
     mut hit_player: EventWriter<HitPlayer>,
     mut kill_npc: EventWriter<KillNpc>,
     mut play_sound: EventWriter<PlaySoundEvent>,
+    mut win: EventWriter<Win>
 ) {
     if let Ok((player_entity, player)) = player.get_single_mut() {
         for collision_event in collision_events.read() {
             if let CollisionEvent::Started(reciever_entity, sender_entity, _) = collision_event {
-                // println!("{:?}", collision_event);
                 // player appears to always be reciever
                 let sender_entity = *sender_entity;
                 if let Ok(_) = projectiles.get(sender_entity) {
@@ -556,9 +565,33 @@ pub fn process_collisions(
                     }
                 } else if let Ok(_) = structures.get(sender_entity) {
                     commands.entity(player_entity).remove::<Sensor>();
+                } else if let Ok(_) = help.get(sender_entity) {
+                    commands.entity(player_entity).remove::<Sensor>();
+                } else if let Ok(rose_entity) = roses.get(sender_entity) {
+                    commands.entity(rose_entity).despawn_recursive();
+                    roses_collected.collected += 1;
+                    if roses_collected.max == roses_collected.collected {
+                        win.send(Win);
+                    }
                 }
             }
         }
+    }
+}
+
+#[derive(Event)]
+pub struct Win;
+
+pub fn victory(
+    mut win: EventReader<Win>,
+    mut kill_player: EventWriter<KillPlayer>,
+    mut roses_collected: ResMut<RosesCollected>,
+    mut event: EventWriter<RespawnRosesEvent>,
+) {
+    for _ in win.read() {
+        kill_player.send(KillPlayer { won: true });
+        roses_collected.collected = 0;
+        event.send(RespawnRosesEvent);
     }
 }
 
