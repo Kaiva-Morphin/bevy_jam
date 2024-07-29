@@ -56,13 +56,6 @@ pub fn update_daycycle(
     }
 }
 
-fn f(x: f32) -> f32 {
-    if x < 0.5 {
-        return 2. * x * x;
-    } else {
-        return 1. - (-2. * x + 2.).powf(2.) / 2.;
-    }
-}
 #[derive(Event, Debug)]
 pub struct PauseEvent;
 
@@ -76,7 +69,6 @@ pub enum GameState {
 pub fn pause_game(
     state: Res<State<GameState>>,
     mut next_state: ResMut<NextState<GameState>>,
-    keyboard: Res<ButtonInput<KeyCode>>,
     mut time: ResMut<Time<Virtual>>,
     mut pause_event: EventReader<PauseEvent>,
 ) {

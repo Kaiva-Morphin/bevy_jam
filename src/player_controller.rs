@@ -190,7 +190,7 @@ use core::functions::ExpDecay;
 
 struct SpeedCFG{
     max_speed : f32,
-    accumulation_grain : f32,
+    accumulation_gain : f32,
     follow_speed: f32
 }
 
@@ -198,7 +198,7 @@ impl Default for SpeedCFG {
     fn default() -> Self {
         SpeedCFG {
             max_speed: 80.,
-            accumulation_grain: 600.,
+            accumulation_gain: 600.,
             follow_speed: 10.
         }
     }
@@ -217,7 +217,7 @@ fn update(
     let ctx = egui_context.ctx_mut();
     egui::Window::new("SLIDERS").show(ctx, |ui|{
         ui.add(Slider::new(&mut speed_cfg.max_speed, 1. ..= 10_000.).text("MAX SPEED"));
-        ui.add(Slider::new(&mut speed_cfg.accumulation_grain, 1. ..= 10_000.).text("ACCUMULATION GRAIN"));
+        ui.add(Slider::new(&mut speed_cfg.accumulation_gain, 1. ..= 10_000.).text("ACCUMULATION GRAIN"));
         ui.add(Slider::new(&mut speed_cfg.follow_speed, 1. ..= 10_000.).text("CAMERA FOLLOW SPEED"));
     });
 
@@ -245,7 +245,7 @@ fn update(
         *accum = (*accum).exp_decay(0., 10., time.delta_seconds());
         if *accum < 1. {*dir = None}
     } else {
-        controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * speed_cfg.max_speed, time.delta_seconds() * speed_cfg.accumulation_grain);
+        controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * speed_cfg.max_speed, time.delta_seconds() * speed_cfg.accumulation_gain);
         if controller.accumulated_velocity.length() > speed_cfg.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * speed_cfg.max_speed}
         character_controller.linvel = controller.accumulated_velocity;
     };

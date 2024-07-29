@@ -6,7 +6,7 @@ use noise::{core::perlin, NoiseFn, Perlin};
 use rand::Rng;
 use bevy_easings::*;
 
-use crate::{core::{camera::plugin::CameraController, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, player::systems::{RAYCASTABLE_STRUCT_CG, STRUCTURES_CG}, stuff::fire_bundle, DayCycle};
+use crate::{core::{camera::plugin::{CameraController, MainCamera}, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, player::systems::{RAYCASTABLE_STRUCT_CG, STRUCTURES_CG}, stuff::fire_bundle, DayCycle};
 
 #[derive(Component)]
 pub struct Structure;
@@ -156,7 +156,7 @@ pub fn update_emitter_tiles(
     
     mut handles: ResMut<TextureAtlasLayoutHandles>,
 
-    mut emitters: Query<(&mut PointLight2d, &GlobalTransform)>,
+    mut emitters: Query<&mut PointLight2d>,
     
     post_process: Query<&PostProcessUniform>,
     daycycle: Res<DayCycle>,
@@ -166,7 +166,7 @@ pub fn update_emitter_tiles(
     let max_intensity = 1.;
     let default_radius = 150.;
     let default_falloff = 0.;
-    let color = Color::srgb(1.0, 0.791, 0.396);
+    let color = Color::srgb(0.9, 0.791, 0.396);
     let mut spawn_light_bundle = |c: &mut ChildBuilder, offset: Vec3, n: String|{
         let v = n.parse::<usize>().unwrap();
         c.spawn((
@@ -204,8 +204,9 @@ pub fn update_emitter_tiles(
     for b in new_always.iter() {commands.entity(b).with_children(|c|{
         c.spawn((
             bevy_light_2d::light::PointLight2dBundle{
+                transform: Transform::from_translation(vec3(0., 10., -6.)),
                 point_light: PointLight2d{
-                    color: Color::srgb(1., 0.3, 0.),
+                    color: Color::srgb(0.8, 0.3, 0.),
                     intensity: max_intensity,
                     radius: default_radius,
                     falloff: default_falloff,
@@ -215,13 +216,13 @@ pub fn update_emitter_tiles(
             LightEmitter,
         )).insert(
             fire_bundle(&asset_server, &mut handles, rand::thread_rng().gen_range(0..19))
-        ).insert(Transform::from_translation(vec3(0., 10., 1.)));
+        ).insert(Transform::from_translation(vec3(0., 10., -5.)));
     });}
     let p = post_process.single();
     for mut l in emitters.iter_mut(){
-        l.0.intensity = p.daytime.powi(2) * max_intensity;
+        l.intensity = p.daytime.powi(2) * max_intensity;
         if (time.elapsed_seconds() * 16.).round() as usize % 2 == 0 {
-            l.0.radius = default_radius + rand::thread_rng().gen_range(0..100) as f32 * 0.01 * 0.2 * default_radius;
+            l.radius = default_radius + rand::thread_rng().gen_range(0..100) as f32 * 0.01 * 0.4 * default_radius;
         }
     }
     if daycycle.is_night || daycycle.is_translating{
@@ -233,15 +234,12 @@ pub fn update_emitter_tiles(
 
 
 pub fn update_animated_trees(
-    mut commands: Commands,
-    mut tree_q: Query<(&GlobalTransform, &mut Transform, &AnimatedTreePart, &mut Sprite)>,
+    mut tree_q: Query<(&GlobalTransform, &mut Transform, &AnimatedTreePart, &mut Sprite), Without<MainCamera>>,
     time: Res<Time<Virtual>>,
-    mut perlin: Local<Option<Perlin>>
+    mut perlin: Local<Option<Perlin>>,
 ){
     if perlin.is_none(){*perlin = Some(Perlin::new(rand::thread_rng().gen::<u32>()))}
-    let t: f32 = time.elapsed_seconds() * 10.;
-
-    tree_q.par_iter_mut().for_each(|(glob, mut transform, tree, mut s)|{
+    tree_q.par_iter_mut().for_each(|(glob, mut transform, tree,  mut s)|{
         if tree.0 == 0 {return;}
         let offset = vec3(0., -match tree.0 {
             1 => 6.,
@@ -341,6 +339,7 @@ pub fn spawn_tile_tree(
 }
 
 pub fn setup_camera_bounds(
+    mut commands: Commands,
     mut cameras_q: Query<&mut CameraController>,
     level_query: Query<(&Transform, &LevelIid)>,
     ldtk_projects: Query<&Handle<LdtkProject>>,

@@ -5,7 +5,7 @@ use bevy_rapier2d::prelude::*;
 
 use crate::characters::animation::{spawn_player_animation_bundle, AnimationController, PartType};
 use crate::core::camera::plugin::CameraFollow;
-use crate::core::functions::TextureAtlasLayoutHandles;
+use crate::core::functions::{ExpDecay, TextureAtlasLayoutHandles};
 use crate::core::ui::PlayerUINode;
 use crate::sounds::components::PlaySoundEvent;
 use crate::systems::DayCycle;
@@ -67,7 +67,7 @@ pub fn spawn_player(
         TransformBundle::from_transform(Transform::from_xyz(16., 16., 0.)),
         Name::new("Player"),
         CameraFollow{order: 0, speed: 10.},
-        Player {hp: 100., xp: 0., score: 0., max_speed: 80., accumulation_grain: 600., 
+        Player {hp: 100., xp: 0., score: 0., max_speed: 80., accumulation_gain: 600., 
             phys_res: 0.2, hp_gain: 10., xp_gain: 10., max_xp: 100., max_hp: 100., is_dead: false},
         AnimationController::default(),
         RigidBody::Dynamic,
@@ -84,7 +84,7 @@ pub fn spawn_player(
         ),
     ));
 }
-
+use crate::characters::animation::HunterAnims;
 pub fn player_controller(
     mut commands: Commands,
     mut player_q: Query<(&mut Velocity, &mut PlayerController,
@@ -92,21 +92,24 @@ pub fn player_controller(
     keyboard: Res<ButtonInput<KeyCode>>,
     day_cycle: Res<DayCycle>,
     time: Res<Time>,
-    mut dash_dir: Local<Vec2>,
     mut play_sound: EventWriter<PlaySoundEvent>,
+    mut dash_dir: Local<Option<Vec2>>,
+    mut accum: Local<f32>,
+    mut dash_cd: Local<Timer>,
 ) {
     if let Ok((mut character_controller, mut controller,
         mut animation_controller, mut dash_timer,
         mut player, player_entity)) = player_q.get_single_mut() {
     character_controller.linvel = Vec2::ZERO;
+    if player.is_dead {return}
     let dt = time.delta_seconds();
     if dash_timer.timer.elapsed_secs() == 0. {
         let input_dir = vec2(
             keyboard.pressed(KeyCode::KeyD) as i32 as f32 - keyboard.pressed(KeyCode::KeyA) as i32 as f32,
             keyboard.pressed(KeyCode::KeyW) as i32 as f32 - keyboard.pressed(KeyCode::KeyS) as i32 as f32
-        );
+        ).normalize();
         
-        controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * player.max_speed, dt * player.accumulation_grain);
+        controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * player.max_speed, dt * player.accumulation_gain);
         if controller.accumulated_velocity.length() > player.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * player.max_speed}
         character_controller.linvel = controller.accumulated_velocity;
     
@@ -125,47 +128,29 @@ pub fn player_controller(
             animation_controller.play_idle_priority(1);
         }
     
-        if keyboard.just_released(KeyCode::ShiftLeft) {
+        if keyboard.just_pressed(KeyCode::ShiftLeft) {
             play_sound.send(PlaySoundEvent::Dash);
             dash_timer.timer.tick(Duration::from_secs_f32(dt));
-            *dash_dir = input_dir;
+            *dash_dir = Some(input_dir);
+            *accum = 10.;
             if day_cycle.is_night {
                 commands.entity(player_entity).insert(
                     (CollisionGroups::new(
                         Group::from_bits(PLAYER_CG).unwrap(),
-                        Group::from_bits(STRUCTURES_CG | NPC_CG).unwrap()
+                        Group::from_bits(STRUCTURES_CG | NPC_CG | RAYCASTABLE_STRUCT_CG).unwrap()
                     ),
-                    Sensor,)
+                    Sensor)
                 );
             } else {
                 commands.entity(player_entity).insert(
                     CollisionGroups::new(
                         Group::from_bits(PLAYER_CG).unwrap(),
-                        Group::from_bits(STRUCTURES_CG | RAYCASTABLE_STRUCT_CG).unwrap()
+                        Group::from_bits(STRUCTURES_CG | NPC_CG | RAYCASTABLE_STRUCT_CG).unwrap()
                     ),
                 );
             }
         }
-    } else {
-        dash_timer.timer.tick(Duration::from_secs_f32(dt));
-        let t = dash_timer.timer.elapsed_secs();
-
-        let new_max = player.max_speed * g(t);
-        let new_gain = player.accumulation_grain * g(t);
-
-        controller.accumulated_velocity = controller.accumulated_velocity.move_towards(dash_dir.normalize_or_zero() * new_max, dt * new_gain);
-        if controller.accumulated_velocity.length() > new_max {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * new_max}
-        character_controller.linvel = controller.accumulated_velocity;
-        
-        if dash_timer.timer.finished() {
-            dash_timer.timer.set_elapsed(Duration::from_secs_f32(0.));
-            commands.entity(player_entity).insert(
-            CollisionGroups::new(
-                Group::from_bits(PLAYER_CG).unwrap(),
-                Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG | RAYCASTABLE_STRUCT_CG).unwrap()
-            )).remove::<Sensor>();
-        }
-    }
+    } 
     }
 }
 
@@ -225,7 +210,7 @@ pub fn kill_player(
             commands.entity(entity).insert((
                 Visibility::Visible,
                 Transform::from_xyz(16., 16., 0.),
-                Player {hp: 100., xp: 0., score: 0., max_speed: 80., accumulation_grain: 600., 
+                Player {hp: 100., xp: 0., score: 0., max_speed: 80., accumulation_gain: 600., 
                     phys_res: 0.2, hp_gain: 10., xp_gain: 10., max_xp: 100., max_hp: 100., is_dead: false}
             ));
             death_timer.timer.set_elapsed(Duration::ZERO);

@@ -73,7 +73,7 @@ pub fn spawn_player_animation_bundle(commands: &mut Commands, asset_server: &Res
                     texture: asset_server.load("particles/shadow.png"),
                     ..default()
                 },
-            )).insert(Transform::from_translation(vec3(0., -8., SHADOW_Z)));
+            )).insert(Transform::from_translation(vec3(0., -3., SHADOW_Z)));
             commands.spawn((
                 Name::new("Umbrella"),
                 PartType::Umbrella,
@@ -116,7 +116,7 @@ pub fn spawn_hunter_animation_bundle(mut commands: &mut Commands, asset_server: 
                 texture: asset_server.load("particles/shadow.png"),
                 ..default()
             },
-        )).insert(Transform::from_translation(vec3(0., -10., SHADOW_Z)));
+        )).insert(Transform::from_translation(vec3(0., -3., SHADOW_Z)));
     }).id()
 }
 
@@ -155,12 +155,12 @@ impl PartType {
     pub fn default_offset(&self) -> Vec3{
         vec3(
             0.,
-            0.,
+            6.,
             match self {
                 PartType::Body { variant: _, variants: _ } => BODY_Z,
                 PartType::Eyes { variant: _, variants: _ } => EYES_Z,
                 PartType::Item { variant: _, variants: _ } => ITEM_Z,
-                PartType::Umbrella => ITEM_Z,
+                PartType::Umbrella => 0.1,
                 PartType::Outfit { variant: _, variants: _ } => OUTFIT_Z,
                 PartType::Arms => ARMS_Z,
                 PartType::Hair { variant: _, variants: _ } => HAIR_Z,
@@ -296,7 +296,7 @@ pub fn spawn_civilian_animation_bundle(commands: &mut Commands, asset_server: &R
                 texture: asset_server.load("particles/shadow.png"),
                 ..default()
             },
-        )).insert(Transform::from_translation(vec3(0., -8., SHADOW_Z)));
+        )).insert(Transform::from_translation(vec3(0., -2., SHADOW_Z)));
     }).id()
 }
 
@@ -347,8 +347,7 @@ impl AnimTicker{
 
 
 pub trait PlayerAnims{
-    fn take_umbrella(&mut self){}
-    fn drop_umbrella(&mut self){}
+    fn play_dash(&mut self){}
 }
 
 pub trait HunterAnims{
@@ -358,7 +357,6 @@ pub trait HunterAnims{
 pub trait CivilianAnims{
     fn play_civil_attack(&mut self){}
 }
-
 
 impl CivilianAnims for AnimationController{
     fn play_civil_attack(&mut self) {
@@ -653,18 +651,23 @@ pub(super) fn update_sprites(
             if let Ok((mut sprite, mut atlas, sprite_type, mut transform, mut visibility)) = sprites.get_mut(*child){
                 match sprite_type {
                     PartType::Body{variant: _, variants: _} => {
+                        transform.translation = sprite_type.default_offset();
                         atlas.index = c.get_idx();
                         sprite.flip_x = mirrored;
                     },
                     PartType::Umbrella => {
-                        atlas.index = c.get_dir_custom_offset(2);
                         transform.translation = sprite_type.default_offset() + offset + match c.direction {
                             0 => {vec3(3.5, 4.5, 0.)}
                             1 => {vec3(1.5, 3.5, 0.)}
                             2 => {vec3(-0.5, 4.5, 0.)}
                             _ => {vec3(-1.5, 3.5, 0.)}
                         };
-                        
+
+                        atlas.index = c.get_dir_custom_offset(2);
+                        if c.get_idx() % c.dir_offset == IDX_HURT {
+                            atlas.index = 1;
+                            transform.translation = sprite_type.default_offset() + offset + if c.is_mirrored(){vec3(-3.5, 4.5, 0.)} else {vec3(3.5, 4.5, 0.)}
+                        }
                         *visibility = c.get_item_visibility();
                         //transform.translation = sprite_type.default_offset() + offset + c.get_item_offset();
                         sprite.flip_x = mirrored;
@@ -678,9 +681,10 @@ pub(super) fn update_sprites(
                         atlas.index = c.get_item_idx(*variants, *variant);
                         sprite.flip_x = mirrored;
                         *visibility = c.get_item_visibility();
-                        transform.translation = vec3(0., 2., ITEM_Z) + offset * vec3(0., 1., 0.) + c.get_item_offset();
+                        transform.translation = vec3(0., 2., ITEM_Z) + offset * vec3(0., 1., 0.) + c.get_item_offset() + sprite_type.default_offset();
                     },
                     PartType::Outfit{variant, variants} => {
+                        transform.translation = sprite_type.default_offset();
                         atlas.index = c.get_idx_custom_offset(variants * 4) + variant * 4;
                         sprite.flip_x = mirrored;
                     },

@@ -107,7 +107,7 @@ pub fn interact_upgrade_button(
                         },
                         UpgradeButton::Speed => {
                             player.max_speed *= 1.1;
-                            player.accumulation_grain *= 1.1;
+                            player.accumulation_gain *= 1.1;
                         },
                     }
                     commands.entity(parent_entity.entity).despawn_recursive();

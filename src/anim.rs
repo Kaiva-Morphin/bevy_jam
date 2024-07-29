@@ -62,7 +62,7 @@ fn setup(
     commands.entity(entity).insert(PreviewCharacter);
 }
 
-
+use crate::characters::animation::HunterAnims;
 
 fn update(
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -99,7 +99,7 @@ fn update(
             controller.disarm();
         }
         if keyboard.just_pressed(KeyCode::Digit3){
-            controller.play_civil_attack();
+            controller.play_hunter_throw();
         }
         if keyboard.just_pressed(KeyCode::Digit4){
             controller.play_hurt();

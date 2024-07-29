@@ -30,7 +30,7 @@ pub fn spawn_civilian(
 ) {
     let entity = spawn_civilian_animation_bundle(&mut commands, asset_server, layout_handles);
     commands.entity(entity).insert((
-        TransformBundle::from_transform(Transform::from_translation(pos.extend(0.))),
+        TransformBundle::from_transform(Transform::from_translation(pos.extend(-2.))),
         RigidBody::Dynamic,
         Velocity::zero(),
         Civilian,
@@ -335,14 +335,11 @@ pub fn manage_hunters(
                     let dir = intercept - hunter_pos;
                     let dir = dir / dir.length();
                     let throwable_variant = rand::thread_rng().gen_range(0..4);
-                    let e = match throwable_variant {
-                        0 => {commands.spawn(crate::stuff::animated_fork_bundle(&asset_server, &mut atlas_handles)).id()},
-                        1 => {commands.spawn(crate::stuff::animated_knife_bundle(&asset_server, &mut atlas_handles)).id()},
-                        2 => {commands.spawn(crate::stuff::animated_garlic_bundle(&asset_server, &mut atlas_handles)).id()},
-                        _ => {commands.spawn(crate::stuff::stake_bundle(&asset_server, &mut atlas_handles, dir)).id()},
-                    };
-                    commands.entity(e).insert((
-                        Transform::from_translation(hunter_pos.extend(0.)).with_rotation(Quat::from_rotation_z(if throwable_variant != 3 {0.} else {dir.to_angle() + PI * 0.75})),
+                    
+
+
+                    commands.spawn((TransformBundle::default(), VisibilityBundle::default())).insert((
+                        Transform::from_translation(hunter_pos.extend(0.)),
                         RigidBody::Dynamic,
                         Collider::cuboid(3., 3.),
                         CollisionGroups::new(
@@ -359,7 +356,23 @@ pub fn manage_hunters(
                         Sensor,
                         ActiveEvents::COLLISION_EVENTS,
                         Sleeping::disabled(),
-                    ));
+                    )).with_children(|commands|{
+                        match throwable_variant {
+                            0 => {commands.spawn(crate::stuff::animated_fork_bundle(&asset_server, &mut atlas_handles));},
+                            1 => {commands.spawn(crate::stuff::animated_knife_bundle(&asset_server, &mut atlas_handles));},
+                            2 => {commands.spawn(crate::stuff::animated_garlic_bundle(&asset_server, &mut atlas_handles));},
+                            _ => {commands.spawn(crate::stuff::stake_bundle(&asset_server, &mut atlas_handles, dir)).insert(
+                                Transform::from_rotation(Quat::from_rotation_z(if throwable_variant != 3 {0.} else {dir.to_angle() + PI * 0.75}),
+                            ));},
+                        };
+                        commands.spawn(
+                            SpriteBundle{
+                                transform: Transform::from_xyz(0.,-6., 0.),
+                                texture: asset_server.load("particles/minishadow.png"),
+                                ..default()
+                            }
+                        );
+                    });
                 }
             }
             let dist = player_pos.distance(hunter_pos);
@@ -494,7 +507,7 @@ pub fn manage_projectiles(
     for (mut timer, entity) in projectiles.iter_mut() {
         timer.timer.tick(Duration::from_secs_f32(delta));
         if timer.timer.finished() {
-            commands.entity(entity).despawn();
+            commands.entity(entity).despawn_recursive();
         }
     }
 }
@@ -522,7 +535,7 @@ pub fn process_collisions(
                     if *reciever_entity == player_entity {
                         hit_player.send(HitPlayer { dmg_type: 0});
                     }
-                    commands.entity(sender_entity).despawn();
+                    commands.entity(sender_entity).despawn_recursive();
                 } else if let Ok(mut state) = civilians.get_mut(sender_entity) {
                     if day_cycle.is_night {
                         // kill civilian

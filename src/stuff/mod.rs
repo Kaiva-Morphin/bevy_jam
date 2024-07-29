@@ -209,7 +209,7 @@ pub fn spawn_cililian_body(
     let offset = if flipped{vec3(-2., 0., 0.)} else {vec3(2., 0., 0.)};
     commands.spawn(animated_soul_bundle(asset_server, layout_handles))
     .insert(Transform::from_translation(offset+vec3(0., 8., 10.) + start).ease_to(
-        Transform::from_translation(offset+start+vec3(0., 12. + rand::thread_rng().gen::<f32>() * 5., 10.)),
+        Transform::from_translation(offset+start+vec3(0., 12. + rand::thread_rng().gen::<f32>() * 5., 1.)),
         EaseFunction::ExponentialOut,
         EasingType::Once {
             duration: std::time::Duration::from_secs(1),
@@ -221,7 +221,7 @@ pub fn spawn_cililian_body(
         VisibilityBundle::default(),
         DespawnTimer::seconds(5.),
     ))
-    .insert(Transform::from_translation(vec3(0., 0., 8.) + start).with_scale(vec3(if flipped{-1.} else {1.}, 1., 1.)))
+    .insert(Transform::from_translation(vec3(0., -1., -5.) + start).with_scale(vec3(if flipped{-1.} else {1.}, 1., 0.)))
     .with_children(|commands| {
         commands.spawn((
             Name::new("Particle"),
@@ -257,7 +257,7 @@ pub fn spawn_hunter_body(
     let offset = if flipped{vec3(-2., 0., 0.)} else {vec3(2., 0., 0.)};
     commands.spawn(animated_soul_bundle(asset_server, layout_handles))
     .insert(Transform::from_translation(offset+vec3(0., 8., 10.) + start).ease_to(
-        Transform::from_translation(offset+start+vec3(0., 12. + rand::thread_rng().gen::<f32>() * 5., 10.)),
+        Transform::from_translation(offset+start+vec3(0., 12. + rand::thread_rng().gen::<f32>() * 5., 0.)),
         EaseFunction::ExponentialOut,
         EasingType::Once {
             duration: std::time::Duration::from_secs(1),
@@ -269,7 +269,7 @@ pub fn spawn_hunter_body(
         VisibilityBundle::default(),
         DespawnTimer::seconds(5.),
     ))
-    .insert(Transform::from_translation(vec3(0., 0., 8.) + start).with_scale(vec3(if flipped{-1.} else {1.}, 1., 1.)))
+    .insert(Transform::from_translation(vec3(0., -3., -5.) + start).with_scale(vec3(if flipped{-1.} else {1.}, 1., 1.)))
     .with_children(|commands| {
         commands.spawn((
             Name::new("Particle"),

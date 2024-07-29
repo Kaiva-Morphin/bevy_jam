@@ -136,8 +136,8 @@ fn update_camera(
             let up = corners.0.y.max(corners.1.y);
             let down = corners.0.y.min(corners.1.y);
             let world_screen_size = camera.logical_viewport_size().unwrap();
-            let a = camera.viewport_to_world(&glob, vec2(0., 0.)).map(|ray| ray.origin.truncate()).unwrap();
-            let b = camera.viewport_to_world(&glob, world_screen_size).map(|ray| ray.origin.truncate()).unwrap();
+            let Some(a) = camera.viewport_to_world(&glob, vec2(0., 0.)).map(|ray| ray.origin.truncate()) else {continue;};
+            let Some(b) = camera.viewport_to_world(&glob, world_screen_size).map(|ray| ray.origin.truncate()) else {continue;};
             let world_screen_size = (b - a) * vec2(0.5, -0.5);
             let size = (corners.0 - corners.1).abs();
             let center = (corners.0 + corners.1) / 2.;

@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{math::ivec2, prelude::*, utils::HashSet};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
-use bevy_rapier2d::prelude::Velocity;
+use bevy_rapier2d::prelude::{ActiveEvents, Collider, RigidBody, Sensor, Velocity};
 use bevy_light_2d::prelude::Light2dPlugin;
 use crate::player::components::Player;
 
@@ -31,6 +31,7 @@ impl Plugin for TileMapPlugin {
         app.add_systems(PreUpdate, trespassable_spawn_listener);
         app.register_ldtk_entity::<HunterSpawnerBundle>("HunterSpawner");
         app.register_ldtk_entity::<CivilianSpawnerBundle>("CivilianSpawner");
+        app.register_ldtk_entity::<CollectableRoseBundle>("Rose");
         app.register_ldtk_int_cell_for_layer::<tilemap::RaycastableTileObsticleBundle>("Ground", 1);
         app.register_ldtk_int_cell_for_layer::<tilemap::TiledTreeBundle>("Ground", 3);
         app.register_ldtk_int_cell_for_layer::<tilemap::TileObsticleBundle>("Ground", 4);
@@ -54,6 +55,53 @@ impl Plugin for TileMapPlugin {
         app.insert_resource(TrespassableCells::default());
     }
 }
+
+
+#[derive(Component, Default)]
+pub struct CollectableRose;
+
+#[derive(Component, Default)]
+pub struct CollectableRoseSpawner;
+
+#[derive(Bundle, Default, LdtkEntity)]
+pub struct CollectableRoseBundle{
+    rose: CollectableRoseSpawner
+}
+
+pub fn respawn_collectables(
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
+    spawners: Query<Entity, Added<CollectableRoseSpawner>>,
+    roses: Query<Entity, With<CollectableRose>>
+){
+    for rose in roses.iter(){commands.entity(rose).despawn()}
+}
+
+pub fn handle_collectables(
+    //EventHandler::handle_collision_eventx
+){
+
+}
+
+pub fn spawn_collectables(
+    to_spawn: Query<Entity, Added<CollectableRoseSpawner>>,
+    asset_server: Res<AssetServer>,
+    mut commands: Commands,
+){
+    for e in to_spawn.iter(){
+        commands.entity(e).insert((
+            SpriteBundle{
+                texture: asset_server.load("map/rose.png"),
+                ..default()
+            },
+            RigidBody::Fixed,
+            Collider::ball(1.),
+            ActiveEvents::COLLISION_EVENTS,
+            Sensor,
+        ));
+    }
+}
+
 
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default, Component)]
@@ -116,6 +164,8 @@ impl TrespassableCells {
         *value
     }
 }
+
+
 
 
 fn update_unit_grid(

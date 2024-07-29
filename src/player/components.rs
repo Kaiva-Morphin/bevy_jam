@@ -6,7 +6,7 @@ pub struct Player {
     pub xp: f32,
     pub score: f32,
     pub max_speed: f32,
-    pub accumulation_grain: f32,
+    pub accumulation_gain: f32,
     pub phys_res: f32,
     pub hp_gain: f32,
     pub xp_gain: f32,
