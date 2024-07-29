@@ -6,7 +6,7 @@ use rand::{thread_rng, Rng};
 
 use crate::{
     characters::animation::*, core::functions::TextureAtlasLayoutHandles, map::{plugin::{CivilianSpawner, CollectableRose, CollectableRoseSpawner, HunterSpawner, RespawnRosesEvent, TrespassableCells}, 
-    tilemap::{RaycastableHelp, Structure, TransformToGrid}}, player::{components::{HitPlayer, KillNpc, KillPlayer, Player}, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, STRUCTURES_CG}}, sounds::components::PlaySoundEvent, stuff::{spawn_angry_particle, spawn_cililian_body, spawn_hunter_body, spawn_question_particle, spawn_warn_particle}, systems::DayCycle
+    tilemap::{RaycastableHelp, Structure, TransformToGrid}}, player::{components::{HitPlayer, KillNpc, KillPlayer, Player}, systems::{PlayerController, BULLET_CG, NPC_CG, PLAYER_CG, RAYCASTABLE_STRUCT_CG, STRUCTURES_CG}}, sounds::components::PlaySoundEvent, stuff::{spawn_angry_particle, spawn_cililian_body, spawn_hunter_body, spawn_question_particle, spawn_warn_particle}, systems::DayCycle
 };
 
 use super::{components::*, pathfinder};
@@ -568,6 +568,7 @@ pub fn process_collisions(
                 } else if let Ok(_) = help.get(sender_entity) {
                     commands.entity(player_entity).remove::<Sensor>();
                 } else if let Ok(rose_entity) = roses.get(sender_entity) {
+                    if player.is_dead {return;}
                     commands.entity(rose_entity).despawn_recursive();
                     roses_collected.collected += 1;
                     if roses_collected.max == roses_collected.collected {

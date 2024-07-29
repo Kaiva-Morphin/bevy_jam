@@ -33,6 +33,9 @@ pub fn lvl_up(
     children.push(spawn_button(commands, asset_server, font.clone_weak(), "HP Gain + 10%", UpgradeButton::HpGain, parent));
     children.push(spawn_button(commands, asset_server, font.clone_weak(), "XP Gain + 10%", UpgradeButton::XpGain, parent));
     children.push(spawn_button(commands, asset_server, font.clone_weak(), "Speed + 10%", UpgradeButton::Speed, parent));
+    children.push(spawn_button(commands, asset_server, font.clone_weak(), "Dash CD - 8%", UpgradeButton::DashCD, parent));
+    children.push(spawn_button(commands, asset_server, font.clone_weak(), "Dash Time + 8%", UpgradeButton::DashTick, parent));
+    children.push(spawn_button(commands, asset_server, font.clone_weak(), "Hunger Rate - 20%", UpgradeButton::HungerRate, parent));
 
     for child in children {
         commands.entity(parent).add_child(child);
@@ -109,6 +112,16 @@ pub fn interact_upgrade_button(
                             player.max_speed *= 1.1;
                             player.accumulation_gain *= 1.1;
                         },
+                        UpgradeButton::HungerRate => {
+                            player.hunger_rate *= 0.8;
+                        },
+                        UpgradeButton::DashCD => {
+                            player.dash_cd *= 0.92;
+                        },
+                        UpgradeButton::DashTick => {
+                            player.dash_tick *= 0.92;
+                        },
+                        
                     }
                     commands.entity(parent_entity.entity).despawn_recursive();
                     play_sound.send(PlaySoundEvent::Selected);
@@ -164,18 +177,35 @@ pub fn spawn_death_text(
         },
         ..default()
     }, DeathTime, DeathText));
-    commands.spawn((TextBundle {
-        style: Style {
-            top: Val::Percent(60.),
-            justify_self: JustifySelf::Center,
+
+    if won {
+        commands.spawn((TextBundle {
+            style: Style {
+                top: Val::Percent(60.),
+                justify_self: JustifySelf::Center,
+                ..default()
+            },
+            text: Text {
+                sections: vec![TextSection::new("But the next Vampire\nis looking for roses!", TextStyle { font: font.clone(), font_size: 40., color: Color::WHITE })],
+                ..default()
+            },
             ..default()
-        },
-        text: Text {
-            sections: vec![TextSection::new("Till the next cycle", TextStyle { font: font.clone(), font_size: 40., color: Color::WHITE })],
+        }, DeathText));
+    } else {
+        commands.spawn((TextBundle {
+            style: Style {
+                top: Val::Percent(60.),
+                justify_self: JustifySelf::Center,
+                ..default()
+            },
+            text: Text {
+                sections: vec![TextSection::new("Till the next cycle", TextStyle { font: font.clone(), font_size: 40., color: Color::WHITE })],
+                ..default()
+            },
             ..default()
-        },
-        ..default()
-    }, DeathText));
+        }, DeathText));
+    }
+    
     let collected;
     if won {
         collected = NUM_ROSES

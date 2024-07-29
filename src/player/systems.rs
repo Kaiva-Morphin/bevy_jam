@@ -68,8 +68,7 @@ pub fn spawn_player(
         TransformBundle::from_transform(Transform::from_xyz(16., 16., -1.)),
         Name::new("Player"),
         CameraFollow{order: 0, speed: 10.},
-        Player {hp: 100., xp: 0., score: 0., max_speed: 80., accumulation_gain: 600., 
-            phys_res: 0.2, hp_gain: 10., xp_gain: 10., max_xp: 100., max_hp: 100., is_dead: false},
+        Player::default(),
         AnimationController::default(),
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED_Z,
@@ -94,14 +93,18 @@ pub fn player_controller(
     day_cycle: Res<DayCycle>,
     time: Res<Time>,
     mut dash_dir: Local<Vec2>,
-    mut dash_cd: Local<Timer>,
+    mut dash_cd: Local<f32>,
     mut play_sound: EventWriter<PlaySoundEvent>,
 ) {
     if let Ok((mut character_controller, mut controller,
         mut animation_controller, mut dash_timer,
         mut player, player_entity)) = player_q.get_single_mut() {
     character_controller.linvel = Vec2::ZERO;
+    if player.is_dead{return}
     let dt = time.delta_seconds();
+
+
+    *dash_cd += dt;
     if dash_timer.timer.elapsed_secs() == 0. {
         let input_dir = vec2(
             keyboard.pressed(KeyCode::KeyD) as i32 as f32 - keyboard.pressed(KeyCode::KeyA) as i32 as f32,
@@ -126,10 +129,19 @@ pub fn player_controller(
         } else {
             animation_controller.play_idle_priority(1);
         }
-    
-        if keyboard.just_released(KeyCode::ShiftLeft) {
+        player.hp -= dt * player.hunger_rate;
+        
+        if keyboard.just_pressed(KeyCode::ShiftLeft) {
+            if *dash_cd < player.dash_cd {
+                play_sound.send(PlaySoundEvent::DashCD);
+                return;
+            }
             play_sound.send(PlaySoundEvent::Dash);
-            dash_timer.timer.tick(Duration::from_secs_f32(dt));
+            dash_timer.timer.set_duration(Duration::from_secs_f32(0.35));
+            dash_timer.timer.tick(Duration::from_secs_f32(dt * player.dash_tick));
+            *dash_cd = 0.;
+            *dash_cd += dt;
+            
             *dash_dir = input_dir;
             if day_cycle.is_night {
                 commands.entity(player_entity).insert(
@@ -149,7 +161,7 @@ pub fn player_controller(
             }
         }
     } else {
-        dash_timer.timer.tick(Duration::from_secs_f32(dt));
+        dash_timer.timer.tick(Duration::from_secs_f32(dt * player.dash_tick));
         let t = dash_timer.timer.elapsed_secs();
 
         let new_max = player.max_speed * g(t);
@@ -229,8 +241,7 @@ pub fn kill_player(
             commands.entity(entity).insert((
                 Visibility::Visible,
                 Transform::from_xyz(16., 16., 0.),
-                Player {hp: 100., xp: 0., score: 0., max_speed: 80., accumulation_gain: 600., 
-                    phys_res: 0.2, hp_gain: 10., xp_gain: 10., max_xp: 100., max_hp: 100., is_dead: false}
+                Player::default()
             ));
             death_timer.timer.set_elapsed(Duration::ZERO);
             for entity in death_text.iter() {

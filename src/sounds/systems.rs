@@ -34,6 +34,7 @@ pub fn load_audio(
     ]);
     audio_handles.select = asset_server.load("sounds/select.wav");
     audio_handles.selected = asset_server.load("sounds/selected.wav");
+    audio_handles.dash_cd = asset_server.load("sounds/dash_cd.wav");
     
     night_channel.play(audio_handles.night.clone_weak())
     .start_from(0.)
@@ -113,6 +114,9 @@ pub fn play_sounds(
             PlaySoundEvent::Selected => {
                 sfx_channel.play(audio_handles.selected.clone_weak());
             },
+            PlaySoundEvent::DashCD => {
+                sfx_channel.play(audio_handles.dash_cd.clone_weak());
+            }
         }
     }
 }

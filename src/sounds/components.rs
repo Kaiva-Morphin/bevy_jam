@@ -21,12 +21,14 @@ pub struct AudioHandles {
     pub throw: Handle<bevy_kira_audio::AudioSource>,
     pub select: Handle<bevy_kira_audio::AudioSource>,
     pub selected: Handle<bevy_kira_audio::AudioSource>,
+    pub dash_cd: Handle<bevy_kira_audio::AudioSource>,
 }
 
 #[derive(Event)]
 pub enum PlaySoundEvent {
     LvlUp,
     Dash,
+    DashCD,
     Hit,
     Kill,
     Throw,
