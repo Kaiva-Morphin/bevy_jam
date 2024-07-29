@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use bevy::{math::ivec2, prelude::*, transform::commands, utils::HashSet};
 use bevy_ecs_ldtk::prelude::*;
-use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_rapier2d::prelude::{ActiveEvents, Collider, RigidBody, Sensor, Velocity};
 use bevy_light_2d::prelude::Light2dPlugin;
 use crate::player::components::Player;

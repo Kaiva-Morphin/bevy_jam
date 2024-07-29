@@ -3,7 +3,6 @@ pub mod plugin{
 use std::{cell::RefCell, default, sync::Mutex};
 
 use bevy::{core_pipeline::{bloom::{BloomCompositeMode, BloomPrefilterSettings, BloomSettings}, motion_blur::{MotionBlur, MotionBlurBundle}, tonemapping::{DebandDither, Tonemapping}}, input::mouse::MouseWheel, math::{vec2, vec3}, prelude::*, render::camera::ScalingMode, window::PrimaryWindow};
-use bevy_inspector_egui::egui::mutex::RwLock;
 use bevy_light_2d::light::AmbientLight2d;
 
 use crate::core::{functions::ExpDecay, post_processing::PostProcessUniform};

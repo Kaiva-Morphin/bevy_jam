@@ -21,7 +21,6 @@ use bevy::{
         }, renderer::{RenderContext, RenderDevice}, texture::BevyDefault, view::ViewTarget, RenderApp
     }, window::WindowResized
 };
-use bevy_inspector_egui::{bevy_egui::EguiContexts, egui::{self, Slider}};
 
 use super::camera::plugin::MainCamera;
 

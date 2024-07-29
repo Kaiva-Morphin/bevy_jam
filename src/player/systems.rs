@@ -12,8 +12,6 @@ use crate::sounds::components::PlaySoundEvent;
 use crate::systems::DayCycle;
 use crate::PauseEvent;
 use bevy::math::{uvec2, vec2};
-use bevy_inspector_egui::bevy_egui::EguiContexts;
-use bevy_inspector_egui::egui::{self, Slider};
 use pathfinding::num_traits::Signed;
 
 use super::components::*;

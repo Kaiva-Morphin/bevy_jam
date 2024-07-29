@@ -4,7 +4,7 @@ pub mod plugin {
     use bevy_rapier2d::render::RapierDebugRenderPlugin;
     use bevy_rapier2d::prelude::*;
 
-    use crate::core::{camera::plugin::EnhancedCameraPlugin, debug::rapier_debug::plugin::SwitchableRapierDebugPlugin, despawn_lifetime::DespawnLifetimePlugin, functions::TextureAtlasLayoutHandles, post_processing::PostProcessPlugin, ui::UIPlugin};
+    use crate::core::{camera::plugin::EnhancedCameraPlugin, despawn_lifetime::DespawnLifetimePlugin, functions::TextureAtlasLayoutHandles, post_processing::PostProcessPlugin, ui::UIPlugin};
     pub struct DefaultPlugin;
 
     impl Plugin for DefaultPlugin {
@@ -21,9 +21,9 @@ pub mod plugin {
                             }),
                             ..default()
                         }),
-                RapierDebugRenderPlugin::default().disabled(),
+                //RapierDebugRenderPlugin::default().disabled(),
                 RapierPhysicsPlugin::<NoUserData>::default(),
-                SwitchableRapierDebugPlugin,
+                //SwitchableRapierDebugPlugin,
                 EnhancedCameraPlugin,
                 PostProcessPlugin,
                 DespawnLifetimePlugin,

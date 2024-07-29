@@ -9,8 +9,6 @@ pub mod sounds;
 
 use crate::player::components::Player;
 use core::{camera::plugin::EnhancedCameraPlugin, functions::TextureAtlasLayoutHandles};
-use core::debug::egui_inspector::plugin::SwitchableEguiInspectorPlugin;
-use core::debug::diagnostics_screen::plugin::ScreenDiagnosticsPlugin;
 use std::time::Duration;
 
 use bevy::math::vec3;
@@ -32,8 +30,8 @@ fn main() {
     app
     .add_plugins((
         core::default::plugin::DefaultPlugin,
-        SwitchableEguiInspectorPlugin,
-        ScreenDiagnosticsPlugin,
+        //SwitchableEguiInspectorPlugin,
+        //ScreenDiagnosticsPlugin,
         TileMapPlugin,
     ))
     .insert_state(GameState::InGame)
