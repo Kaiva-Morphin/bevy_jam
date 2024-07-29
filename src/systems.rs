@@ -4,7 +4,7 @@ use bevy::{color::palettes::css::{BLUE, RED}, math::uvec2, prelude::*};
 use bevy_light_2d::light::AmbientLight2d;
 use pathfinding::num_traits::{Euclid, Signed};
 
-use crate::{characters::animation::AnimationController, core::{camera::plugin::MainCamera, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, player::components::{ParentEntity, Player, UpgradeButton}, sounds::components::PlaySoundEvent};
+use crate::{characters::animation::AnimationController, core::{camera::plugin::MainCamera, functions::TextureAtlasLayoutHandles, post_processing::PostProcessUniform}, npc::systems::RosesCollected, player::components::{ParentEntity, Player, UpgradeButton}, sounds::components::PlaySoundEvent};
 
 pub const TRANSLATION_DURATION: f32 = 1.0;
 pub const DAY_DURATION: f32 = 15.0;
@@ -90,10 +90,14 @@ pub fn pause_game(
 #[derive(Component)]
 pub struct Score;
 
+#[derive(Component)]
+pub struct ScoreRoses;
+
 pub fn spawn_score(
     mut commands: Commands,
     player: Query<&Player>,
     asset_server: Res<AssetServer>,
+    roses: Res<RosesCollected>
 ) {
     if let Ok(player) = player.get_single() {
         let font = asset_server.load("fonts/Monocraft.ttf");
@@ -104,21 +108,43 @@ pub fn spawn_score(
                 ..default()
             },
             text: Text {
-                sections: vec![TextSection::new(format!("Score: {:?}", player.score as i32), TextStyle { font, font_size: 16., color: Color::WHITE })],
+                sections: vec![
+                    TextSection::new(format!(
+                    "Score: {:?}", player.score as i32),
+                    TextStyle { font: font.clone_weak(), font_size: 16., color: Color::WHITE })],
                 ..default()
             },
             ..default()
         }, Score));
+        commands.spawn((TextBundle {
+            style: Style {
+                top: Val::Percent(5.),
+                left: Val::Percent(0.),
+                ..default()
+            },
+            text: Text {
+                sections: vec![
+                    TextSection::new(format!(
+                        "Roses: {:?} / {}", roses.collected, roses.max),
+                        TextStyle { font, font_size: 16., color: Color::WHITE })],
+                ..default()
+            },
+            ..default()
+        }, ScoreRoses));
     }
 }
 
 pub fn update_score(
     player: Query<&Player>,
-    mut score: Query<&mut Text, With<Score>>
+    mut score: Query<&mut Text, (With<Score>, Without<ScoreRoses>)>,
+    mut score_roses: Query<&mut Text, With<ScoreRoses>>,
+    roses: Res<RosesCollected>,
 ) {
     if let Ok(player) = player.get_single() {
         let mut score = score.single_mut();
-        score.sections[0].value = format!("Score: {:?}", player.score as i32)
+        let mut score_roses = score_roses.single_mut();
+        score.sections[0].value = format!("Score: {:?}", player.score as i32);
+        score_roses.sections[0].value = format!("Roses: {:?} / {}", roses.collected, roses.max);
     }
 }
 
@@ -157,10 +183,15 @@ pub fn spawn_starter_screen(
                 justify_self: JustifySelf::Center,
                 ..default()
             },
-            background_color: BackgroundColor::from(Color::Srgba(BLUE)),
             text: Text {
                 sections: vec![TextSection::new(
-                    "IOHA[OGHohuaofh8h8=924y-r89h[nofa'lhu[ioa'hgou'shf[uio'nlk",
+                    "   A game by yaroyanuo and kaiva-morphin 
+                                For Bevy Game Jam 5.
+
+                    Controls:
+                    WASD - movement, LShift - Dash.
+                    If you are experiencing  lags, press F4
+                    ",
                     TextStyle { font: font.clone_weak(), font_size: 16., color: Color::srgb_u8(169, 96, 45) })],
                 ..default()
             },
