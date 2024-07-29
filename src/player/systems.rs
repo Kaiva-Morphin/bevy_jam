@@ -7,6 +7,7 @@ use crate::characters::animation::{spawn_player_animation_bundle, AnimationContr
 use crate::core::camera::plugin::CameraFollow;
 use crate::core::functions::{ExpDecay, TextureAtlasLayoutHandles};
 use crate::core::ui::PlayerUINode;
+use crate::npc::systems::RosesCollected;
 use crate::sounds::components::PlaySoundEvent;
 use crate::systems::DayCycle;
 use crate::PauseEvent;
@@ -84,7 +85,7 @@ pub fn spawn_player(
         ),
     ));
 }
-use crate::characters::animation::HunterAnims;
+
 pub fn player_controller(
     mut commands: Commands,
     mut player_q: Query<(&mut Velocity, &mut PlayerController,
@@ -92,22 +93,19 @@ pub fn player_controller(
     keyboard: Res<ButtonInput<KeyCode>>,
     day_cycle: Res<DayCycle>,
     time: Res<Time>,
+    mut dash_dir: Local<Vec2>,
     mut play_sound: EventWriter<PlaySoundEvent>,
-    mut dash_dir: Local<Option<Vec2>>,
-    mut accum: Local<f32>,
-    mut dash_cd: Local<Timer>,
 ) {
     if let Ok((mut character_controller, mut controller,
         mut animation_controller, mut dash_timer,
         mut player, player_entity)) = player_q.get_single_mut() {
     character_controller.linvel = Vec2::ZERO;
-    if player.is_dead {return}
     let dt = time.delta_seconds();
     if dash_timer.timer.elapsed_secs() == 0. {
         let input_dir = vec2(
             keyboard.pressed(KeyCode::KeyD) as i32 as f32 - keyboard.pressed(KeyCode::KeyA) as i32 as f32,
             keyboard.pressed(KeyCode::KeyW) as i32 as f32 - keyboard.pressed(KeyCode::KeyS) as i32 as f32
-        ).normalize();
+        );
         
         controller.accumulated_velocity = controller.accumulated_velocity.move_towards(input_dir.normalize_or_zero() * player.max_speed, dt * player.accumulation_gain);
         if controller.accumulated_velocity.length() > player.max_speed {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * player.max_speed}
@@ -128,29 +126,47 @@ pub fn player_controller(
             animation_controller.play_idle_priority(1);
         }
     
-        if keyboard.just_pressed(KeyCode::ShiftLeft) {
+        if keyboard.just_released(KeyCode::ShiftLeft) {
             play_sound.send(PlaySoundEvent::Dash);
             dash_timer.timer.tick(Duration::from_secs_f32(dt));
-            *dash_dir = Some(input_dir);
-            *accum = 10.;
+            *dash_dir = input_dir;
             if day_cycle.is_night {
                 commands.entity(player_entity).insert(
                     (CollisionGroups::new(
                         Group::from_bits(PLAYER_CG).unwrap(),
                         Group::from_bits(STRUCTURES_CG | NPC_CG | RAYCASTABLE_STRUCT_CG).unwrap()
                     ),
-                    Sensor)
+                    Sensor,)
                 );
             } else {
                 commands.entity(player_entity).insert(
                     CollisionGroups::new(
                         Group::from_bits(PLAYER_CG).unwrap(),
-                        Group::from_bits(STRUCTURES_CG | NPC_CG | RAYCASTABLE_STRUCT_CG).unwrap()
+                        Group::from_bits(STRUCTURES_CG | RAYCASTABLE_STRUCT_CG).unwrap()
                     ),
                 );
             }
         }
-    } 
+    } else {
+        dash_timer.timer.tick(Duration::from_secs_f32(dt));
+        let t = dash_timer.timer.elapsed_secs();
+
+        let new_max = player.max_speed * g(t);
+        let new_gain = player.accumulation_gain * g(t);
+
+        controller.accumulated_velocity = controller.accumulated_velocity.move_towards(dash_dir.normalize_or_zero() * new_max, dt * new_gain);
+        if controller.accumulated_velocity.length() > new_max {controller.accumulated_velocity = controller.accumulated_velocity.normalize() * new_max}
+        character_controller.linvel = controller.accumulated_velocity;
+        
+        if dash_timer.timer.finished() {
+            dash_timer.timer.set_elapsed(Duration::from_secs_f32(0.));
+            commands.entity(player_entity).insert(
+            CollisionGroups::new(
+                Group::from_bits(PLAYER_CG).unwrap(),
+                Group::from_bits(BULLET_CG | STRUCTURES_CG | NPC_CG | RAYCASTABLE_STRUCT_CG).unwrap()
+            )).remove::<Sensor>();
+        }
+    }
     }
 }
 
@@ -176,7 +192,7 @@ pub fn hit_player(
             }
         }
         if player.hp < 0. && !player.is_dead {
-            kill_player.send(KillPlayer);
+            kill_player.send(KillPlayer {won: false});
         }
     }
 }
@@ -187,21 +203,23 @@ pub fn kill_player(
     mut play_sound: EventWriter<PlaySoundEvent>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut layout_handles: ResMut<TextureAtlasLayoutHandles>,
     mut death_timer: ResMut<DeathTimer>,
     time: Res<Time>,
     mut death_time: Query<&mut Text, With<DeathTime>>,
     death_text: Query<Entity, With<DeathText>>,
+    roses: Res<RosesCollected>,
 ) {
     let dt = time.delta_seconds();
     let t = death_timer.timer.duration().as_secs_f32() - death_timer.timer.elapsed_secs();
     let (entity, mut player) = player_entity.single_mut();
-    for _ in kill_player.read() {
-        play_sound.send(PlaySoundEvent::Kill);
+    for event in kill_player.read() {
+        if !event.won {
+            play_sound.send(PlaySoundEvent::Kill);
+        }
         commands.entity(entity).insert(Visibility::Hidden);
         player.is_dead = true;
         death_timer.timer.tick(Duration::from_secs_f32(dt));
-        spawn_death_text(&mut commands, &asset_server, t);
+        spawn_death_text(&mut commands, &asset_server, t, &roses, event.won);
     }
     if death_timer.timer.elapsed_secs() != 0. {
         death_timer.timer.tick(Duration::from_secs_f32(dt));

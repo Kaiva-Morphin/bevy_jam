@@ -18,11 +18,14 @@ use bevy::prelude::*;
 use bevy_kira_audio::prelude::*;
 use characters::plugin::CharacterAnimationPlugin;
 use map::plugin::TileMapPlugin;
+use npc::systems::RosesCollected;
 use npc::NPCPlugin;
 use player::PlayerPlugin;
 use sounds::AudioPlugin;
 use stuff::{simple_anim_update, spawn_follow_blood_particle, update_blood_particles};
 use systems::*;
+
+const NUM_ROSES: u32 = 1;
 
 fn main() {
     let mut app = App::new();
@@ -37,6 +40,10 @@ fn main() {
     .insert_resource(DayCycle {
         is_night: true,
         is_translating: false,
+    })
+    .insert_resource(RosesCollected {
+        collected: 0,
+        max: NUM_ROSES,
     })
     .add_event::<PauseEvent>()
     .add_plugins((

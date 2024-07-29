@@ -46,7 +46,9 @@ pub struct ParentEntity {
 }
 
 #[derive(Event)]
-pub struct KillPlayer;
+pub struct KillPlayer {
+    pub won: bool,
+}
 
 #[derive(Resource)]
 pub struct DeathTimer {
