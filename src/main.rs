@@ -25,7 +25,7 @@ use sounds::AudioPlugin;
 use stuff::{simple_anim_update, spawn_follow_blood_particle, update_blood_particles};
 use systems::*;
 
-const NUM_ROSES: u32 = 1;
+const NUM_ROSES: u32 = 2;
 
 fn main() {
     let mut app = App::new();
