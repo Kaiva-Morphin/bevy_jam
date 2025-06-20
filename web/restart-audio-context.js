@@ -19,7 +19,7 @@
 
     // A proxy object to intercept AudioContexts and
     // add them to the array for tracking and resuming later
-    self.AudioContext = new Proxy(self.AudioContext, {
+    self.AudioContext = new Proxy(self.AudioContext, {  
         construct(target, args) {
             const result = new target(...args);
             audioContextList.push(result);

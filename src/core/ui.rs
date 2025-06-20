@@ -53,6 +53,8 @@ fn setup(
     commands.spawn((
         ImageBundle {
             style: Style{
+                width: Val::Px(2. * 110.),
+                height: Val::Px(2. * 23.),
                 justify_self: JustifySelf::Center,
                 align_self: AlignSelf::End,
                 justify_content: JustifyContent::SpaceBetween,
@@ -85,6 +87,8 @@ fn setup(
                         ImageBundle{
                             image: UiImage::new(asset_server.load("ui/daynight.png")),
                             style: Style{
+                                width: Val::Px(44.),
+                                height: Val::Px(44.),
                                 justify_self: JustifySelf::End,
                                 ..default()
                             },
@@ -113,6 +117,8 @@ fn setup(
                                 ImageBundle{
                                     image: UiImage::new(asset_server.load("ui/blood.png")),
                                     style: Style{
+                                        width: Val::Px(44.),
+                                        height: Val::Px(44.),
                                         justify_self: JustifySelf::Start,
                                         ..default()
                                     },
@@ -139,6 +145,7 @@ fn on_resize_system(
     mut resize_reader: EventReader<WindowResized>,
     mut ui_style: Query<(&mut Style, &UiImageSize), With<PlayerUINode>>,
 ) {
+    return;
     for e in resize_reader.read() {
         for (mut style, size) in ui_style.iter_mut() {
             let size = size.size();
@@ -162,7 +169,7 @@ fn update(
     player_stats: Query<&Player>
 ){
     if let Ok(stats) = player_stats.get_single(){
-        blood_e.single_mut().index = ((1. - stats.hp as f32 / stats.max_hp as f32) * 20.).round() as usize % 20;
+        blood_e.single_mut().index = ((1. - (stats.hp as f32 / stats.max_hp as f32)) * 20.).round() as usize % 20;
     }
     let (mut atlas, mut image) = daynight_e.single_mut();
     let t = (get_local_time_f(time.elapsed_seconds()) + 0.75) % 1.;

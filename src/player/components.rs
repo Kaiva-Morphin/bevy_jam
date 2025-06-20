@@ -24,7 +24,7 @@ impl Default for Player {
             hp: 80.,
             xp: 0., 
             score: 0., 
-            max_speed: 60., 
+            max_speed: 90.,  
             accumulation_gain: 500., 
             phys_res: 0.2, 
             dash_cd: 1.5,

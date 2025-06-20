@@ -30,7 +30,6 @@ fn main() {
     app
     .add_plugins((
         core::default::plugin::DefaultPlugin,
-        //SwitchableEguiInspectorPlugin,
         //ScreenDiagnosticsPlugin,
         TileMapPlugin,
     ))

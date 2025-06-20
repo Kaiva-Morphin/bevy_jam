@@ -1,5 +1,5 @@
 pub mod plugin {
-    use bevy::{app::Plugin, math::vec2, prelude::{default, App, PluginGroup}, render::{texture::ImagePlugin, view::Msaa}, window::{PresentMode, Window, WindowPlugin, WindowTheme}, DefaultPlugins};
+    use bevy::{app::Plugin, asset::{AssetMetaCheck, AssetPlugin}, math::vec2, prelude::{default, App, PluginGroup}, render::{texture::ImagePlugin, view::Msaa}, window::{PresentMode, Window, WindowPlugin, WindowResolution, WindowTheme}, DefaultPlugins};
     use bevy_easings::EasingsPlugin;
     use bevy_rapier2d::render::RapierDebugRenderPlugin;
     use bevy_rapier2d::prelude::*;
@@ -16,9 +16,18 @@ pub mod plugin {
                     primary_window: Some(Window {
                                 present_mode: PresentMode::AutoNoVsync,
                                 window_theme: Some(WindowTheme::Dark),
+                                canvas: Some("#bevy".to_string()),
+                                fit_canvas_to_parent: true,
+                                resolution: WindowResolution::new(400., 300.),
                                 title: "Bloody Night".into(),
                                 ..default()
                             }),
+                            ..default()
+                        }).set(AssetPlugin {
+                            // Wasm builds will check for meta files (that don't exist) if this isn't set.
+                            // This causes errors and even panics on web build on itch.
+                            // See https://github.com/bevyengine/bevy_github_ci_template/issues/48.
+                            meta_check: AssetMetaCheck::Never,
                             ..default()
                         }),
                 //RapierDebugRenderPlugin::default().disabled(),
